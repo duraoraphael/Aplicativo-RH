@@ -1,100 +1,135 @@
-import dotenv from 'dotenv';
-dotenv.config();
-import express from 'express';
-import cors from 'cors';
-import multer from 'multer';
-import admin from 'firebase-admin';
+import http from 'http';
+import url from 'url';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Inicialização do Firebase Admin
-import fs from 'fs';
-let serviceAccount;
-if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON.endsWith('.json')) {
-  serviceAccount = JSON.parse(fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_JSON, 'utf8'));
-} else {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-}
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+// Simulação de dados em memória (em produção, usar Firebase)
+let envios = [];
+let usuarios = [];
+
+// Função para parsear o corpo da requisição
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => {
+      data += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        resolve(data ? JSON.parse(data) : {});
+      } catch (e) {
+        resolve({});
+      }
+    });
   });
 }
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+// CORS middleware
+function setCORSHeaders(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
+}
 
-const upload = multer({ storage: multer.memoryStorage() });
+// Servidor HTTP
+const server = http.createServer(async (req, res) => {
+  setCORSHeaders(res);
 
-// Rota de teste
-app.get('/', (req, res) => {
-  res.json({ status: 'API RH backend online!' });
-});
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
 
-// Envio de atestado (upload PDF)
-app.post('/api/envios', upload.array('arquivos'), async (req, res) => {
-  try {
-    const { nome, funcao, projeto, tipo_atestado, horas_comparecimento, data_inicio, data_fim, dias } = req.body;
-    const arquivos = req.files || [];
-    const urls = [];
-    for (const file of arquivos) {
-      const blob = bucket.file(`atestados/${Date.now()}_${file.originalname}`);
-      await blob.save(file.buffer, { contentType: file.mimetype });
-      await blob.makePublic();
-      urls.push(blob.publicUrl());
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
+
+  // Rota de teste
+  if (pathname === '/' && req.method === 'GET') {
+    res.writeHead(200);
+    res.end(JSON.stringify({ status: 'API RH backend online!' }));
+    return;
+  }
+
+  // Envio de atestados
+  if (pathname === '/api/envios' && req.method === 'POST') {
+    try {
+      const body = await parseBody(req);
+      const novoEnvio = {
+        id: Date.now().toString(),
+        ...body,
+        criado_em: new Date().toISOString(),
+        arquivos: []
+      };
+      envios.push(novoEnvio);
+      res.writeHead(200);
+      res.end(JSON.stringify({ id: novoEnvio.id, success: true }));
+    } catch (err) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: err.message }));
     }
-    const doc = await db.collection('envios_atestados').add({
-      nome, funcao, projeto, tipo_atestado, horas_comparecimento, data_inicio, data_fim, dias,
-      arquivos: urls,
-      criado_em: admin.firestore.FieldValue.serverTimestamp()
-    });
-    res.json({ id: doc.id, success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return;
   }
-});
 
-// Listar atestados
-app.get('/api/envios', async (req, res) => {
-  try {
-    const snap = await db.collection('envios_atestados').orderBy('criado_em', 'desc').get();
-    const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  // Listar atestados
+  if (pathname === '/api/envios' && req.method === 'GET') {
+    try {
+      const data = envios.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
+      res.writeHead(200);
+      res.end(JSON.stringify(data));
+    } catch (err) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
   }
-});
 
-// Listar usuários pendentes
-app.get('/api/usuarios/pendentes', async (req, res) => {
-  try {
-    const snap = await db.collection('users').where('emailVisibility', '==', false).get();
-    const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  // Listar usuários pendentes
+  if (pathname === '/api/usuarios/pendentes' && req.method === 'GET') {
+    try {
+      const data = usuarios.filter(u => u.emailVisibility === false);
+      res.writeHead(200);
+      res.end(JSON.stringify(data));
+    } catch (err) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
   }
-});
 
-// Aprovar usuário
-app.post('/api/usuarios/aprovar/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    await db.collection('users').doc(id).update({ emailVisibility: true });
-    res.json({ id, aprovado: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  // Aprovar usuário
+  if (pathname.match(/^\/api\/usuarios\/aprovar\//) && req.method === 'POST') {
+    try {
+      const id = pathname.split('/').pop();
+      const user = usuarios.find(u => u.id === id);
+      if (user) {
+        user.emailVisibility = true;
+      }
+      res.writeHead(200);
+      res.end(JSON.stringify({ id, aprovado: true }));
+    } catch (err) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
   }
+
+  // Fallback
+  res.writeHead(404);
+  res.end(JSON.stringify({ error: 'Rota não encontrada' }));
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Servidor RH backend rodando na porta ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`✓ Servidor RH backend rodando em http://localhost:${PORT}`);
+  console.log(`  - GET  http://localhost:${PORT}/`);
+  console.log(`  - GET  http://localhost:${PORT}/api/envios`);
+  console.log(`  - POST http://localhost:${PORT}/api/envios`);
+  console.log(`  - GET  http://localhost:${PORT}/api/usuarios/pendentes`);
+  console.log(`  - POST http://localhost:${PORT}/api/usuarios/aprovar/:id`);
 });

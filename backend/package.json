@@ -5,19 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "node index.js"
   },
-  "dependencies": {
-    "cors": "^2.8.6",
-    "dotenv": "^16.6.1",
-    "express": "^4.22.1",
-    "firebase-admin": "^11.11.1",
-    "multer": "^1.4.5-lts.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.3"
-  },
-  "description": "1. Crie um projeto no Firebase e gere uma chave de serviço (service account JSON).\r 2. Salve o JSON da service account em um arquivo local ou defina a variável de ambiente FIREBASE_SERVICE_ACCOUNT_JSON com o conteúdo do JSON.\r 3. Defina a variável de ambiente FIREBASE_STORAGE_BUCKET com o nome do bucket do seu projeto (ex: normatel-rh.appspot.com).\r 4. Instale as dependências:",
+  "dependencies": {},
+  "devDependencies": {},
+  "description": "Backend RH - Node.js nativo. Versão simplificada para desenvolvimento.",
   "keywords": [],
   "author": "",
   "license": "ISC"
