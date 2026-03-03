@@ -74,6 +74,8 @@
         const FIREBASE_PROJECT_HOST = localStorage.getItem('rh_firebase_project_host') || 'normatel-rh.firebaseapp.com';
         const FIREBASE_API_KEY = localStorage.getItem('rh_firebase_api_key') || 'AIzaSyCWLQteC_iYmUi_0DVEsUb5kCdki5e13bs';
         const FIREBASE_PENDING_REGISTER_KEY = 'rh_firebase_pending_register';
+        const MSAL_PENDING_LOGIN_KEY = 'rh_msal_pending_login';
+        const MSAL_PENDING_MODE_KEY = 'rh_msal_pending_mode';
         
         // Instância do MSAL (será inicializada quando MSAL.js carregar)
         let msalInstance = null;
@@ -433,6 +435,84 @@
             }
         }
 
+        function deveUsarRedirectNoMsal(erro) {
+            const texto = `${erro?.errorCode || ''} ${erro?.message || ''}`.toLowerCase();
+            return (
+                texto.includes('popup_window_error') ||
+                texto.includes('empty_window_error') ||
+                texto.includes('auth/popup-blocked') ||
+                texto.includes('popup blocked') ||
+                texto.includes('window.closed') ||
+                texto.includes('cross-origin-opener-policy') ||
+                texto.includes('user cancelled')
+            );
+        }
+
+        async function processarRetornoLoginMicrosoft() {
+            if (!msalInstance || !msalReady) {
+                return false;
+            }
+
+            const loginResponse = await msalInstance.handleRedirectPromise();
+            const haviaLoginPendente = sessionStorage.getItem(MSAL_PENDING_LOGIN_KEY) === '1';
+            const modoPendente = sessionStorage.getItem(MSAL_PENDING_MODE_KEY) || 'login';
+
+            if (!loginResponse && !haviaLoginPendente) {
+                return false;
+            }
+
+            sessionStorage.removeItem(MSAL_PENDING_LOGIN_KEY);
+            sessionStorage.removeItem(MSAL_PENDING_MODE_KEY);
+
+            const account = loginResponse?.account || msalInstance.getActiveAccount() || (msalInstance.getAllAccounts()[0] || null);
+            if (!account) {
+                return false;
+            }
+
+            const token = loginResponse?.accessToken || loginResponse?.idToken || localStorage.getItem('rh_auth_token') || '';
+            const email = (account.username || '').toLowerCase();
+            const nome = account.name || account.username;
+
+            if (!email) {
+                throw new Error('Não foi possível identificar o email da conta Microsoft após redirecionamento.');
+            }
+
+            if (modoPendente !== 'login') {
+                return false;
+            }
+
+            const verificacao = await verificarUsuarioCadastrado(email);
+            if (!verificacao.existe) {
+                definirMensagem('⚠️ Primeiro acesso detectado. Clique em "Cadastrar com Microsoft" para continuar.', 'error');
+                document.getElementById('loginBtn').disabled = false;
+                document.getElementById('registerBtn').disabled = false;
+                return true;
+            }
+
+            if (!verificacao.aprovado) {
+                marcarCadastroPendente(email, nome);
+                definirMensagem('⏳ Seu cadastro ainda está pendente de aprovação do administrador.', 'loading');
+                document.getElementById('loginBtn').disabled = false;
+                document.getElementById('registerBtn').disabled = false;
+                return true;
+            }
+
+            if (msalInstance) {
+                msalInstance.setActiveAccount(account);
+            }
+
+            definirMensagem(`✅ Login bem-sucedido como ${nome}`, 'success');
+            salvarSessao(account, token, 'login_microsoft_redirect');
+
+            setTimeout(() => {
+                const destino = REDIRECT_AFTER_LOGIN;
+                localStorage.removeItem('rh_redirect_after_login');
+                window.location.href = destino;
+            }, 1500);
+
+            return true;
+        }
+
         async function fazerLoginMicrosoft(modo = 'login') {
             try {
                 definirMensagem('🔄 Redirecionando para Microsoft...', 'loading');
@@ -475,9 +555,21 @@
                     return;
                 }
 
-                // Fazer login com popup
                 const request = window.loginRequest || { scopes: ["openid", "profile", "email"] };
-                const loginResponse = await msalInstance.loginPopup(request);
+                let loginResponse;
+
+                try {
+                    loginResponse = await msalInstance.loginPopup(request);
+                } catch (erroPopupMsal) {
+                    if (deveUsarRedirectNoMsal(erroPopupMsal)) {
+                        sessionStorage.setItem(MSAL_PENDING_LOGIN_KEY, '1');
+                        sessionStorage.setItem(MSAL_PENDING_MODE_KEY, modo);
+                        definirMensagem('🔄 Abrindo login por redirecionamento (popup bloqueado pelo navegador)...', 'loading');
+                        await msalInstance.loginRedirect(request);
+                        return;
+                    }
+                    throw erroPopupMsal;
+                }
                 
                 console.log('✅ Login bem-sucedido:', loginResponse);
                 
@@ -575,6 +667,11 @@
                     document.getElementById('loginBtn').disabled = false;
                     document.getElementById('registerBtn').disabled = false;
                     limparMensagem();
+
+                    const processouRetornoMsal = await processarRetornoLoginMicrosoft();
+                    if (processouRetornoMsal) {
+                        return;
+                    }
                 } else {
                     console.warn('⚠️ MSAL.js não está carregado. Verifique o script local em assets/vendor/msal-browser.min.js');
                     document.getElementById('loginBtn').disabled = true;
