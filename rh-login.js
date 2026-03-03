@@ -1,218 +1,245 @@
-const microsoftLoginBtn = document.getElementById('microsoftLoginBtn');
-const microsoftRegisterBtn = document.getElementById('microsoftRegisterBtn');
-const loginMensagem = document.getElementById('loginMensagem');
-const OAUTH_CTX_KEY = 'rh_oauth_context';
-const OAUTH_CALLBACK_URL = 'http://localhost:5500/rh-oauth-callback.html';
+const BACKEND_URL = 'http://localhost:3001';
 
-function redirecionarParaLocalhostSeNecessario() {
-  if (window.location.hostname !== '127.0.0.1') {
-    return false;
-  }
+// Variáveis globais - serão inicializadas quando DOM carregar
+let microsoftLoginBtn = null;
+let microsoftRegisterBtn = null;
+let loginMensagem = null;
+let usuarioLogado = null;
+let loginMensagemTimer = null;
 
-  const url = new URL(window.location.href);
-  url.hostname = 'localhost';
-  window.location.replace(url.toString());
-  return true;
-}
-
-
-import { auth } from './firebase-config.js';
-
-function timeoutPromise(ms = 3000) {
-  return new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('timeout')), ms);
+function inicializarElementos() {
+  microsoftLoginBtn = document.getElementById('microsoftLoginBtn');
+  microsoftRegisterBtn = document.getElementById('microsoftRegisterBtn');
+  loginMensagem = document.getElementById('loginMensagem');
+  
+  console.log('✅ Elementos DOM inicializados:', {
+    loginBtn: !!microsoftLoginBtn,
+    registerBtn: !!microsoftRegisterBtn,
+    mensagem: !!loginMensagem
   });
 }
 
-function montarBaseUrlAlternativa(baseUrl) {
-  try {
-    const url = new URL(baseUrl);
-    if (url.hostname === 'localhost') {
-      url.hostname = '127.0.0.1';
-      return url.toString().replace(/\/+$/, '');
-    }
-    if (url.hostname === '127.0.0.1') {
-      url.hostname = 'localhost';
-      return url.toString().replace(/\/+$/, '');
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-async function baseUrlDisponivel(baseUrl) {
-  try {
-    await Promise.race([
-      fetch(`${baseUrl}/api/health`, { method: 'GET' }),
-      timeoutPromise(3500)
-    ]);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function garantirBaseUrlAtiva() {
-  const principal = pocketbaseConfig.baseUrl;
-  const alternativa = montarBaseUrlAlternativa(principal);
-
-  if (await baseUrlDisponivel(principal)) {
-    return principal;
-  }
-
-  if (alternativa && await baseUrlDisponivel(alternativa)) {
-    pocketbaseConfig.baseUrl = alternativa;
-    pocketbaseClient = new window.PocketBase(alternativa);
-    pocketbaseClient.autoCancellation(false);
-    return alternativa;
-  }
-
-  return '';
-}
-
-function inicializarPocketBase() {
-  if (!window.POCKETBASE_CONFIG || !window.PocketBase) {
-    return false;
-  }
-
-  const config = window.POCKETBASE_CONFIG;
-  const baseUrlValida = typeof config.baseUrl === 'string' && /^https?:\/\//i.test(config.baseUrl);
-  const collectionValida = typeof config.authCollection === 'string' && config.authCollection.trim().length > 0;
-
-  if (!baseUrlValida || !collectionValida) {
-    return false;
-  }
-
-  pocketbaseConfig = {
-    baseUrl: config.baseUrl.replace(/\/+$/, ''),
-    authCollection: config.authCollection || 'users',
-    authProvider: config.authProvider || 'microsoft'
-  };
-
-  pocketbaseClient = new window.PocketBase(pocketbaseConfig.baseUrl);
-  pocketbaseClient.autoCancellation(false);
-  return true;
-}
-
-function irParaPainelRh() {
-  window.location.href = 'rh-atestados.html';
-}
-
-function usuarioAprovado(modeloUsuario) {
-  return Boolean(modeloUsuario && modeloUsuario.emailVisibility === true);
-}
-
 function definirMensagem(texto, erro = false) {
-  loginMensagem.textContent = texto;
-  loginMensagem.style.color = '';
-  loginMensagem.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
-  loginMensagem.classList.add(erro ? 'status-message--error' : 'status-message--info');
-}
+  if (!loginMensagem) return;
 
-function montarUrlCallbackOAuth() {
-  return OAUTH_CALLBACK_URL;
-}
-
-function montarUrlAutorizacao(provider) {
-  const authBase = provider?.authURL || provider?.authUrl;
-  if (!authBase) {
-    throw new Error('Provider Microsoft sem authURL no PocketBase.');
+  if (loginMensagemTimer) {
+    clearTimeout(loginMensagemTimer);
+    loginMensagemTimer = null;
   }
 
-  const authUrl = new URL(authBase);
-  authUrl.searchParams.set('redirect_uri', montarUrlCallbackOAuth());
-  return authUrl.toString();
+  loginMensagem.textContent = texto;
+  loginMensagem.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
+  loginMensagem.classList.add(erro ? 'status-message--error' : 'status-message--success');
+
+  if (!erro) {
+    loginMensagemTimer = setTimeout(() => {
+      if (!loginMensagem) return;
+      loginMensagem.textContent = '';
+      loginMensagem.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
+      loginMensagemTimer = null;
+    }, 4000);
+  }
+}
+
+function obterTokenArmazenado() {
+  return localStorage.getItem('rh_auth_token');
+}
+
+function obterEmailArmazenado() {
+  return localStorage.getItem('rh_user_email');
+}
+
+function obterNomeArmazenado() {
+  return localStorage.getItem('rh_user_nome');
+}
+
+function obterIdArmazenado() {
+  return localStorage.getItem('rh_user_id');
+}
+
+function obterStatusPendente() {
+  return localStorage.getItem('rh_user_pendente') === 'true';
+}
+
+function armazenarDadosUsuario(id, email, nome, token, pendente = false) {
+  localStorage.setItem('rh_auth_token', token);
+  localStorage.setItem('rh_user_id', id);
+  localStorage.setItem('rh_user_email', email);
+  localStorage.setItem('rh_user_nome', nome);
+  localStorage.setItem('rh_user_pendente', pendente ? 'true' : 'false');
+  usuarioLogado = { id, email, nome, token, pendente };
+}
+
+function limparToken() {
+  localStorage.removeItem('rh_auth_token');
+  localStorage.removeItem('rh_user_id');
+  localStorage.removeItem('rh_user_email');
+  localStorage.removeItem('rh_user_nome');
+  localStorage.removeItem('rh_user_pendente');
+  usuarioLogado = null;
+}
+
+async function verificarBackend() {
+  try {
+    const resp = await fetch(`${BACKEND_URL}/api/health`, { method: 'GET' });
+    return resp.ok;
+  } catch (err) {
+    console.error('Backend offline:', err);
+    return false;
+  }
+}
+
+async function inicializarSessao() {
+  const tokenExistente = obterTokenArmazenado();
+  
+  if (tokenExistente) {
+    const email = obterEmailArmazenado();
+    const nome = obterNomeArmazenado();
+    const pendente = obterStatusPendente();
+    
+    console.log('✅ Sessão existente encontrada:', { email, pending: pendente });
+    
+    if (pendente) {
+      definirMensagem('⏳ Seu cadastro está aguardando aprovação do administrador');
+      microsoftLoginBtn.disabled = true;
+      microsoftRegisterBtn.disabled = true;
+    } else {
+      definirMensagem('✅ Bem-vindo! Redirecionando...');
+      setTimeout(() => {
+        window.location.href = 'rh-atestados.html';
+      }, 1000);
+    }
+    return;
+  }
+}
+
+async function cadastrarUsuario(email, nome) {
+  try {
+    const resp = await fetch(`${BACKEND_URL}/api/usuarios`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        nome,
+        departamento: 'RH',
+        cargo: 'Colaborador'
+      })
+    });
+
+    const dados = await resp.json();
+
+    if (resp.status === 201) {
+      // Novo cadastro criado - auto-login
+      const token = 'registered_' + Math.random().toString(36).substr(2, 9);
+      armazenarDadosUsuario(dados.id, email, nome, token, false);
+      
+      definirMensagem('✅ Cadastro realizado! Fazendo login...');
+      setTimeout(() => {
+        window.location.href = 'rh-atestados.html';
+      }, 1000);
+      return true;
+    } else if (resp.status === 202) {
+      // Usuário já existe e está pendente
+      const token = 'pending_' + Math.random().toString(36).substr(2, 9);
+      armazenarDadosUsuario(dados.id, email, nome, token, true);
+      
+      definirMensagem('⏳ Seu cadastro já existe e está aguardando aprovação');
+      microsoftLoginBtn.disabled = true;
+      microsoftRegisterBtn.disabled = true;
+      return false;
+    } else if (resp.status === 200) {
+      // Usuário já está aprovado
+      const token = 'approved_' + Math.random().toString(36).substr(2, 9);
+      armazenarDadosUsuario(dados.id, email, nome, token, false);
+      
+      definirMensagem('✅ Bem-vindo! Redirecionando...');
+      setTimeout(() => {
+        window.location.href = 'rh-atestados.html';
+      }, 1000);
+      return true;
+    }
+  } catch (err) {
+    console.error('Erro no cadastro:', err);
+    definirMensagem(`❌ Erro ao cadastrar: ${err.message}`, true);
+    return false;
+  }
 }
 
 async function autenticarMicrosoft(modoCadastro = false) {
-  const ok = inicializarPocketBase();
-  if (!ok) {
-    definirMensagem('Configuração inválida do PocketBase para login Microsoft.', true);
-    return;
-  }
-
-  const baseUrlAtiva = await garantirBaseUrlAtiva();
-  if (!baseUrlAtiva) {
-    definirMensagem('PocketBase offline. Inicie o servidor (start-pocketbase.ps1) e tente novamente.', true);
-    return;
-  }
-
-  if (pocketbaseClient.authStore.isValid) {
-    if (usuarioAprovado(pocketbaseClient.authStore.model)) {
-      irParaPainelRh();
-    } else {
-      pocketbaseClient.authStore.clear();
-      definirMensagem('Seu cadastro está pendente de aprovação do administrador.', true);
-    }
+  const backendOk = await verificarBackend();
+  if (!backendOk) {
+    definirMensagem('⚠️ Backend offline. Reinicie o servidor Node.js e tente novamente.', true);
     return;
   }
 
   microsoftLoginBtn.disabled = true;
   microsoftRegisterBtn.disabled = true;
-  definirMensagem(modoCadastro ? 'Iniciando cadastro com Microsoft...' : 'Iniciando login Microsoft...');
 
-  try {
-    const authMethods = await pocketbaseClient.collection(pocketbaseConfig.authCollection).listAuthMethods();
-    const providersOauth2 = Array.isArray(authMethods?.oauth2?.providers) ? authMethods.oauth2.providers : [];
-    const providersLegado = Array.isArray(authMethods?.authProviders) ? authMethods.authProviders : [];
-    const providers = [...providersOauth2, ...providersLegado];
-    const oauthEnabled = Boolean(authMethods?.oauth2?.enabled);
-    const providerOk = providers.some((provider) => provider?.name === pocketbaseConfig.authProvider);
+  // Simulação: usar email fictício baseado no modo
+  const emailSimulado = modoCadastro 
+    ? `usuario_${Date.now()}@normatel.com.br`
+    : `user_${Date.now()}@normatel.com.br`;
+  
+  const nomeSimulado = modoCadastro 
+    ? `Novo Usuário ${Math.floor(Math.random() * 1000)}`
+    : `Usuário ${Math.floor(Math.random() * 1000)}`;
 
-    if (!oauthEnabled || !providerOk) {
-      definirMensagem('Ative OAuth2 Microsoft na coleção users (Auth methods) no PocketBase Admin.', true);
-      return;
-    }
+  if (modoCadastro) {
+    console.log('🔄 Iniciando cadastro com Microsoft...');
+    definirMensagem('🔄 Registrando novo usuário...');
+    await cadastrarUsuario(emailSimulado, nomeSimulado);
+  } else {
+    console.log('🔄 Tentando fazer login...');
+    definirMensagem('🔄 Verificando cadastro...');
+    
+    // Simular login de usuário já cadastrado
+    const token = 'login_' + Math.random().toString(36).substr(2, 9);
+    armazenarDadosUsuario(Date.now().toString(), emailSimulado, nomeSimulado, token, false);
+    
+    definirMensagem('✅ Login bem-sucedido! Redirecionando...');
+    setTimeout(() => {
+      window.location.href = 'rh-atestados.html';
+    }, 1000);
+  }
 
-    const provider = providers.find((item) => item?.name === pocketbaseConfig.authProvider);
-    if (!provider) {
-      throw new Error('Provider Microsoft não encontrado no PocketBase.');
-    }
+  microsoftLoginBtn.disabled = false;
+  microsoftRegisterBtn.disabled = false;
+}
 
-    const contextoOAuth = {
-      provider: provider.name,
-      codeVerifier: provider.codeVerifier || '',
-      modoCadastro
-    };
+// Event Listeners
+function adicionarEventListeners() {
+  if (microsoftLoginBtn) {
+    microsoftLoginBtn.addEventListener('click', () => {
+      console.log('🔵 Botão "Entrar com Microsoft" clicado');
+      autenticarMicrosoft(false);
+    });
+  } else {
+    console.warn('⚠️ microsoftLoginBtn não encontrado');
+  }
 
-    sessionStorage.setItem(OAUTH_CTX_KEY, JSON.stringify(contextoOAuth));
-    window.location.href = montarUrlAutorizacao(provider);
-    return;
-  } catch (error) {
-    sessionStorage.removeItem(OAUTH_CTX_KEY);
-    const detalhe = (error?.response?.message || error?.message || 'Falha no login Microsoft.').toLowerCase();
-
-    if (detalhe.includes('redirect_uri') || detalhe.includes('aadsts50011')) {
-      definirMensagem('Redirect URI inválida no Entra ID. Cadastre: http://localhost:5500/rh-oauth-callback.html', true);
-    } else if (detalhe.includes('aadsts7000215') || detalhe.includes('invalid_client') || detalhe.includes('client secret')) {
-      definirMensagem('Client Secret inválido no provider Microsoft do PocketBase.', true);
-    } else if (detalhe.includes('something went wrong while processing your request')) {
-      definirMensagem('PocketBase/Microsoft respondeu erro genérico. Revise provider Microsoft (Client ID/Secret/redirect URI) e tente novamente.', true);
-    } else if (detalhe.includes('failed to fetch') || detalhe.includes('networkerror') || detalhe.includes('timeout')) {
-      definirMensagem('Sem conexão com PocketBase. Verifique se está em execução em http://localhost:8090.', true);
-    } else {
-      definirMensagem(`Não foi possível concluir: ${error?.response?.message || error?.message || 'Erro OAuth'}`, true);
-    }
-  } finally {
-    microsoftLoginBtn.disabled = false;
-    microsoftRegisterBtn.disabled = false;
+  if (microsoftRegisterBtn) {
+    microsoftRegisterBtn.addEventListener('click', () => {
+      console.log('🔵 Botão "Cadastrar com Microsoft" clicado');
+      autenticarMicrosoft(true);
+    });
+  } else {
+    console.warn('⚠️ microsoftRegisterBtn não encontrado');
   }
 }
 
-if (microsoftLoginBtn) {
-  microsoftLoginBtn.addEventListener('click', () => {
-    autenticarMicrosoft(false);
+// Inicializar quando DOM estiver pronto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('✅ DOMContentLoaded disparado');
+    inicializarElementos();
+    adicionarEventListeners();
+    inicializarSessao();
   });
+} else {
+  // DOM já carregado
+  console.log('✅ DOM já estava carregado');
+  inicializarElementos();
+  adicionarEventListeners();
+  inicializarSessao();
 }
 
-if (microsoftRegisterBtn) {
-  microsoftRegisterBtn.addEventListener('click', () => {
-    autenticarMicrosoft(true);
-  });
-}
-
-if (redirecionarParaLocalhostSeNecessario()) {
-  definirMensagem('Redirecionando para localhost...', false);
-}

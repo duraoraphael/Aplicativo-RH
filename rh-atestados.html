@@ -25,27 +25,27 @@
 
     <section class="card rh-list-card">
       <div class="rh-list-actions">
-        <p id="listaStatus" class="rh-list-status status-message status-message--info">Carregando...</p>
+        <p id="listaStatus" class="rh-list-status status-message status-message--info status-toast">Carregando...</p>
         <div class="rh-list-btn-group">
-          <button type="button" id="gerenciarUsuariosBtn" class="rh-admin-btn hidden">Aprovar usuários</button>
-          <button type="button" id="sairRhBtn" class="rh-logout-btn">Sair</button>
+          <button type="button" id="gerenciarUsuariosBtn" class="rh-admin-btn hidden" onclick="irParaAdmin()">Aprovar usuários</button>
+          <button type="button" id="sairRhBtn" class="rh-logout-btn" onclick="fazerLogout()">Sair</button>
         </div>
       </div>
 
       <div class="projetos-cards" aria-label="Projetos RH">
-        <button type="button" class="projeto-card" data-projeto="736">
+        <button type="button" class="projeto-card" data-projeto="736" onclick="abrirProjetoEmNovaAba('736')">
           <strong>Projeto 736</strong>
           <span>Base Imbetiba</span>
         </button>
-        <button type="button" class="projeto-card" data-projeto="737">
+        <button type="button" class="projeto-card" data-projeto="737" onclick="abrirProjetoEmNovaAba('737')">
           <strong>Projeto 737</strong>
           <span>Base Imboassica</span>
         </button>
-        <button type="button" class="projeto-card" data-projeto="743">
+        <button type="button" class="projeto-card" data-projeto="743" onclick="abrirProjetoEmNovaAba('743')">
           <strong>Projeto 743</strong>
           <span>Bases: Cabiunas, Severina e Barra do Furado</span>
         </button>
-        <button type="button" class="projeto-card" data-projeto="741">
+        <button type="button" class="projeto-card" data-projeto="741" onclick="abrirProjetoEmNovaAba('741')">
           <strong>Projeto 741</strong>
           <span>Bases: UTE, Áreas Externa e Tapera</span>
         </button>
@@ -72,9 +72,54 @@
     </section>
   </main>
 
-  <script src="https://unpkg.com/pocketbase@0.21.5/dist/pocketbase.umd.js"></script>
-  <script src="pocketbase-config.js?v=20260224"></script>
-  <script src="firebase-config.js"></script>
-  <script src="rh-dashboard.js?v=20260226"></script>
+  <script>
+    const BACKEND_URL = 'http://localhost:3001';
+
+    function registrarEventoBackend(acao, detalhes = {}) {
+      const payload = {
+        acao,
+        pagina: 'rh-atestados.html',
+        email: localStorage.getItem('rh_user_email') || '',
+        usuarioId: localStorage.getItem('rh_user_id') || '',
+        detalhes
+      };
+
+      fetch(`${BACKEND_URL}/api/eventos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    registrarEventoBackend('acesso_pagina');
+
+    // Funções globais para os botões - garantem funcionamento imediato
+    function fazerLogout() {
+      console.log('🔴 Logout iniciado');
+      const emailAtual = localStorage.getItem('rh_user_email') || '';
+      localStorage.removeItem('rh_auth_token');
+      localStorage.removeItem('rh_user_id');
+      localStorage.removeItem('rh_user_email');
+      localStorage.removeItem('rh_user_nome');
+      localStorage.removeItem('rh_user_pendente');
+      registrarEventoBackend('logout', { email: emailAtual });
+      console.log('✅ Dados limpos - redirecionando');
+      window.location.href = 'index.html';
+    }
+
+    function irParaAdmin() {
+      console.log('📋 Indo para admin');
+      registrarEventoBackend('abrir_admin');
+      window.location.href = 'rh-admin.html';
+    }
+
+    function abrirProjetoEmNovaAba(codigoProjeto) {
+      const destino = `rh-projeto.html?projeto=${encodeURIComponent(codigoProjeto)}`;
+      registrarEventoBackend('abrir_projeto', { projeto: codigoProjeto });
+      window.location.href = destino;
+    }
+  </script>
+  <script type="module" src="rh-dashboard.js?v=20260226"></script>
 </body>
 </html>

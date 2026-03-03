@@ -1,19 +1,41 @@
-const listaStatus = document.getElementById('listaStatus');
-const tabelaWrapper = document.getElementById('tabelaWrapper');
-const tabelaBody = document.getElementById('atestadosBody');
-const sairRhBtn = document.getElementById('sairRhBtn');
-const gerenciarUsuariosBtn = document.getElementById('gerenciarUsuariosBtn');
-const projetoCards = Array.from(document.querySelectorAll('.projeto-card'));
-
-
-import { db, auth } from './firebase-config.js';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { getStorage, ref, getDownloadURL } from 'firebase/storage';
+// Variáveis globais
+let listaStatus = null;
+let tabelaWrapper = null;
+let tabelaBody = null;
+let sairRhBtn = null;
+let gerenciarUsuariosBtn = null;
+let projetoCards = [];
+let listaStatusTimer = null;
 
 let registrosCache = [];
 let projetoSelecionado = '';
 
+function inicializarElementosDom() {
+  listaStatus = document.getElementById('listaStatus');
+  tabelaWrapper = document.getElementById('tabelaWrapper');
+  tabelaBody = document.getElementById('atestadosBody');
+  sairRhBtn = document.getElementById('sairRhBtn');
+  gerenciarUsuariosBtn = document.getElementById('gerenciarUsuariosBtn');
+  projetoCards = Array.from(document.querySelectorAll('.projeto-card'));
+  
+  console.log('✅ Elementos DOM inicializados:', {
+    listaStatus: !!listaStatus,
+    tabelaWrapper: !!tabelaWrapper,
+    tabelaBody: !!tabelaBody,
+    sairRhBtn: !!sairRhBtn,
+    gerenciarUsuariosBtn: !!gerenciarUsuariosBtn,
+    projetoCards: projetoCards.length
+  });
+}
+
 function setListaStatus(texto, tipo = 'info') {
+  if (!listaStatus) return;
+
+  if (listaStatusTimer) {
+    clearTimeout(listaStatusTimer);
+    listaStatusTimer = null;
+  }
+
   listaStatus.textContent = texto;
   listaStatus.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
   if (tipo === 'error') {
@@ -23,41 +45,15 @@ function setListaStatus(texto, tipo = 'info') {
   } else {
     listaStatus.classList.add('status-message--info');
   }
-}
 
-function usuarioAprovado(modeloUsuario) {
-  return Boolean(modeloUsuario && modeloUsuario.emailVisibility === true);
-}
-
-function usuarioAdministrador(modeloUsuario) {
-  const emailAtual = String(modeloUsuario?.email || '').trim().toLowerCase();
-  const adminEmails = Array.isArray(window.POCKETBASE_CONFIG?.rhAdminEmails)
-    ? window.POCKETBASE_CONFIG.rhAdminEmails.map((email) => String(email).trim().toLowerCase())
-    : [];
-  return Boolean(emailAtual && adminEmails.includes(emailAtual));
-}
-
-function iniciarPocketBase() {
-  if (!window.POCKETBASE_CONFIG || !window.PocketBase) {
-    return false;
+  if (tipo === 'success' || tipo === 'info') {
+    listaStatusTimer = setTimeout(() => {
+      if (!listaStatus) return;
+      listaStatus.textContent = '';
+      listaStatus.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
+      listaStatusTimer = null;
+    }, 4000);
   }
-
-  const config = window.POCKETBASE_CONFIG;
-  const baseUrlValida = typeof config.baseUrl === 'string' && /^https?:\/\//i.test(config.baseUrl);
-  const collectionValida = typeof config.collection === 'string' && config.collection.trim().length > 0;
-
-  if (!baseUrlValida || !collectionValida) {
-    return false;
-  }
-
-  pocketbaseConfig = {
-    baseUrl: config.baseUrl.replace(/\/+$/, ''),
-    collection: config.collection
-  };
-
-  pocketbaseClient = new window.PocketBase(pocketbaseConfig.baseUrl);
-  pocketbaseClient.autoCancellation(false);
-  return true;
 }
 
 function formatarData(valorData) {
@@ -312,6 +308,8 @@ function aplicarFiltroProjeto(codigoProjeto) {
   renderizarTabela(filtrarRegistrosPorProjeto(registrosCache));
 }
 
+window.aplicarFiltroProjeto = aplicarFiltroProjeto;
+
 
 
 async function carregarAtestados() {
@@ -327,36 +325,31 @@ async function carregarAtestados() {
   }
 }
 
-if (projetoCards.length) {
-  projetoCards.forEach((card) => {
-    card.addEventListener('click', () => {
-      const codigoProjeto = card.dataset.projeto || '';
-      if (!codigoProjeto) {
-        return;
-      }
-
-      const url = `rh-projeto.html?projeto=${encodeURIComponent(codigoProjeto)}`;
-      window.location.href = url;
-    });
-  });
+function adicionarEventListeners() {
+  console.log('✅ Event listeners já gerenciados pelo HTML onclick');
+  // Os event listeners agora estão no HTML com onclick direto
 }
 
-if (sairRhBtn) {
-  sairRhBtn.addEventListener('click', () => {
-    if (pocketbaseClient) {
-      pocketbaseClient.authStore.clear();
-    }
-    window.location.href = 'index.html';
-  });
+// Inicialização simples
+function inicializarDashboard() {
+  console.log('✅ Inicializando dashboard RH');
+  inicializarElementosDom();
+  ativarDownloadComNome();
+  if (tabelaWrapper) {
+    tabelaWrapper.classList.add('hidden');
+  }
+  setListaStatus('Selecione um projeto para abrir os registros.', 'info');
+  
+  // Mostrar botão de admin
+  if (gerenciarUsuariosBtn) {
+    gerenciarUsuariosBtn.classList.remove('hidden');
+    console.log('✅ Botão admin visível');
+  }
 }
 
-if (gerenciarUsuariosBtn) {
-  gerenciarUsuariosBtn.addEventListener('click', () => {
-    window.location.href = 'rh-usuarios.html';
-  });
+// Executar quando DOM está pronto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', inicializarDashboard);
+} else {
+  inicializarDashboard();
 }
-
-
-// Inicialização direta (sem PocketBase)
-ativarDownloadComNome();
-carregarAtestados();

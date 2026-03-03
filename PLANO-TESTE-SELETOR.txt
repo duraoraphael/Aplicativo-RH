@@ -1,0 +1,67 @@
+Guia Rápido de Teste - Seletor de Conta Microsoft
+==================================================
+
+## Fluxo Atual (Pronto para Testar)
+
+### Teste 1: Acessar via Botão RH na Página Inicial
+1. Abra: http://localhost:5500/index.html
+2. Clique no botão "RH"
+3. Você será redirecionado para account-selector.html
+
+### Teste 2: Acessar via Login RH
+1. Abra: http://localhost:5500/rh-login.html
+2. Clique em "Entrar com Microsoft" ou "Cadastrar com Microsoft"
+3. Você será redirecionado para account-selector.html
+
+### Teste 3: Usar Teste Rápido (Simulado)
+1. Na página account-selector.html
+2. Clique em "Teste Rápido (Simulado)" (botão verde)
+3. Você fará "login" com uma conta simulada
+4. Poderá clicar em "Continuar" para acessar rh-atestados.html
+
+### Teste 4: Login Real com Microsoft (Quando Configurado)
+1. Configure suas credenciais em msal-config.js
+   - Cliente ID do Azure
+   - Tenant ID
+2. Descomente MSAL.js em account-selector.html
+3. Clique em "Entrar com Conta Microsoft"
+4. Login real com sua conta Microsoft corporativa
+
+## Configuração Necessária (Para Integração Real)
+
+Siga o guia em: MICROSOFT-AUTH-SETUP.md
+
+Passos resumidos:
+1. Abra https://portal.azure.com
+2. Registre uma nova aplicação
+3. Copie:
+   - Application (client) ID
+   - Directory (tenant) ID
+4. Configure em msal-config.js
+5. Descomente MSAL.js em account-selector.html
+
+## O que Mudou
+
+✅ Redirecionamento Centralizado
+  - Botão "RH" → account-selector.html
+  - "Entrar com Microsoft" → account-selector.html
+  - "Cadastrar com Microsoft" → account-selector.html
+
+✅ Página de Seleção de Conta
+  - account-selector.html - Nova página central de autenticação
+  - msal-config.js - Arquivo de configuração para Azure AD
+  - MICROSOFT-AUTH-SETUP.md - Guia de configuração
+
+✅ Pronto para Integração Real
+  - MSAL.js (biblioteca oficial Microsoft) incluída
+  - OAuth 2.0 configurado
+  - Simulação funcionando para testes
+
+## Arquivos Modificados
+
+- rh-login.html - Botões agora redirecionam para account-selector.html
+- script.js - Botão RH agora redireciona para account-selector.html
+- Novos:
+  - account-selector.html - Página de seleção
+  - msal-config.js - Configuração
+  - MICROSOFT-AUTH-SETUP.md - Guia

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teste dos Botões</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .test-section {
+      border: 1px solid #ddd;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background-color: #0078d4;
+      color: white;
+    }
+    button:hover {
+      background-color: #005a9e;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Teste dos Botões e Endpoints</h1>
+
+  <div class="test-section">
+    <h2>1. Verificar Backend</h2>
+    <button onclick="testarBackend()">Testar Backend</button>
+    <div id="resultBackend" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>2. Criar Novo Usuário (Cadastro)</h2>
+    <button onclick="testarCadastro()">Simular Cadastro</button>
+    <div id="resultCadastro" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>3. Listar Usuários Pendentes</h2>
+    <button onclick="testarPendentes()">Listar Pendentes</button>
+    <div id="resultPendentes" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>4. Testar Login (armazenar dados)</h2>
+    <button onclick="testarLogin()">Testar Login</button>
+    <div id="resultLogin" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>5. Consultar LocalStorage</h2>
+    <button onclick="mostrarLocalStorage()">Ver LocalStorage</button>
+    <div id="resultStorage" class="result"></div>
+  </div>
+
+  <script>
+    const BACKEND_URL = 'http://localhost:3001';
+
+    async function testarBackend() {
+      const div = document.getElementById('resultBackend');
+      try {
+        const resp = await fetch(`${BACKEND_URL}/api/health`);
+        const dados = await resp.json();
+        div.innerText = `✅ Backend respondeu: ${JSON.stringify(dados, null, 2)}\nStatus: ${resp.status}`;
+      } catch (err) {
+        div.innerText = `❌ Erro: ${err.message}`;
+      }
+    }
+
+    async function testarCadastro() {
+      const div = document.getElementById('resultCadastro');
+      try {
+        const resp = await fetch(`${BACKEND_URL}/api/usuarios`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: `teste_${Date.now()}@normatel.com.br`,
+            nome: `Usuário Teste ${Math.floor(Math.random() * 1000)}`
+          })
+        });
+        const dados = await resp.json();
+        div.innerText = `Status: ${resp.status}\nResposta:\n${JSON.stringify(dados, null, 2)}`;
+      } catch (err) {
+        div.innerText = `❌ Erro: ${err.message}`;
+      }
+    }
+
+    async function testarPendentes() {
+      const div = document.getElementById('resultPendentes');
+      try {
+        const resp = await fetch(`${BACKEND_URL}/api/usuarios/pendentes`);
+        const dados = await resp.json();
+        div.innerText = `Total: ${dados.length} usuários pendentes\n${JSON.stringify(dados, null, 2)}`;
+      } catch (err) {
+        div.innerText = `❌ Erro: ${err.message}`;
+      }
+    }
+
+    async function testarLogin() {
+      const div = document.getElementById('resultLogin');
+      try {
+        const email = `login_test_${Date.now()}@normatel.com.br`;
+        const nome = `Login Tester`;
+        const token = 'test_token_' + Math.random().toString(36).substr(2, 9);
+        
+        localStorage.setItem('rh_auth_token', token);
+        localStorage.setItem('rh_user_email', email);
+        localStorage.setItem('rh_user_nome', nome);
+        localStorage.setItem('rh_user_id', Date.now().toString());
+        localStorage.setItem('rh_user_pendente', 'false');
+
+        div.innerText = `✅ Login simulado armazenado:\n- Email: ${email}\n- Nome: ${nome}\n- Token: ${token}`;
+      } catch (err) {
+        div.innerText = `❌ Erro: ${err.message}`;
+      }
+    }
+
+    function mostrarLocalStorage() {
+      const div = document.getElementById('resultStorage');
+      const storage = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        storage[key] = localStorage.getItem(key);
+      }
+      div.innerText = JSON.stringify(storage, null, 2);
+    }
+  </script>
+</body>
+</html>

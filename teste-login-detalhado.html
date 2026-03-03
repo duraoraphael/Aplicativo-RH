@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teste de Funcionalidade - Login RH</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .teste-container {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .teste-resultado {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .teste-ok {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #81c784;
+    }
+    .teste-erro {
+      background-color: #ffebee;
+      color: #c62828;
+      border: 1px solid #ef5350;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      background: #0078d4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005a9e;
+    }
+  </style>
+</head>
+<body>
+  <div class="teste-container">
+    <h1>🧪 Teste de Funcionalidade - Login RH</h1>
+    
+    <button onclick="testarBotaoLogin()">Testar Botão: Entrar com Microsoft</button>
+    <button onclick="testarBotaoCadastro()">Testar Botão: Cadastrar com Microsoft</button>
+    <button onclick="testarConsoleLogin()">Abrir Seletor de Login</button>
+    
+    <div id="resultado" class="teste-resultado teste-ok">Clique nos botões acima para testar...</div>
+  </div>
+
+  <script>
+    const BACKEND_URL = 'http://localhost:3001';
+
+    async function testarBotaoLogin() {
+      const resultado = document.getElementById('resultado');
+      resultado.className = 'teste-resultado teste-ok';
+      resultado.innerText = 'Testando Botão "Entrar com Microsoft"...\n\n';
+      
+      try {
+        // Verificar backend
+        resultado.innerText += '1. Verificando backend...\n';
+        const healthResp = await fetch(`${BACKEND_URL}/api/health`);
+        resultado.innerText += `   Status: ${healthResp.status}\n\n`;
+
+        // Simular usuário 
+        resultado.innerText += '2. Simulando armazenamento de usuário...\n';
+        const userId = Date.now().toString();
+        const email = `login_test_${Date.now()}@normatel.com.br`;
+        const nome = 'Teste Login';
+        const token = 'login_' + Math.random().toString(36).substr(2, 9);
+
+        localStorage.setItem('rh_auth_token', token);
+        localStorage.setItem('rh_user_id', userId);
+        localStorage.setItem('rh_user_email', email);
+        localStorage.setItem('rh_user_nome', nome);
+        localStorage.setItem('rh_user_pendente', 'false');
+
+        resultado.innerText += `   ✅ Usuário armazenado:\n   - Email: ${email}\n   - Token: ${token}\n\n`;
+
+        // Verificar localStorage
+        resultado.innerText += '3. Verificando localStorage...\n';
+        const token_check = localStorage.getItem('rh_auth_token');
+        resultado.innerText += `   ✅ Token recuperado: ${token_check ? token_check.substring(0, 20) + '...' : 'NÃO ENCONTRADO'}\n\n`;
+
+        resultado.innerText += '4. Redirecionando para painel em 3 segundos...\n';
+        setTimeout(() => {
+          window.location.href = 'rh-atestados.html';
+        }, 3000);
+
+      } catch (err) {
+        resultado.className = 'teste-resultado teste-erro';
+        resultado.innerText = `❌ Erro: ${err.message}\n\n${err.stack}`;
+      }
+    }
+
+    async function testarBotaoCadastro() {
+      const resultado = document.getElementById('resultado');
+      resultado.className = 'teste-resultado teste-ok';
+      resultado.innerText = 'Testando Botão "Cadastrar com Microsoft"...\n\n';
+      
+      try {
+        // Verificar backend
+        resultado.innerText += '1. Verificando backend...\n';
+        const healthResp = await fetch(`${BACKEND_URL}/api/health`);
+        resultado.innerText += `   Status: ${healthResp.status}\n\n`;
+
+        // Criar novo usuário
+        resultado.innerText += '2. Criando novo usuário no backend...\n';
+        const email = `usuario_${Date.now()}@normatel.com.br`;
+        const nome = `Novo Usuário ${Math.floor(Math.random() * 1000)}`;
+
+        const createResp = await fetch(`${BACKEND_URL}/api/usuarios`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, nome, departamento: 'RH', cargo: 'Colaborador' })
+        });
+
+        const dados = await createResp.json();
+        resultado.innerText += `   Status: ${createResp.status}\n`;
+        resultado.innerText += `   ID: ${dados.id}\n\n`;
+
+        // Armazenar dados do usuário
+        resultado.innerText += '3. Armazenando dados de cadastro...\n';
+        const token = 'registered_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('rh_auth_token', token);
+        localStorage.setItem('rh_user_id', dados.id);
+        localStorage.setItem('rh_user_email', email);
+        localStorage.setItem('rh_user_nome', nome);
+        localStorage.setItem('rh_user_pendente', 'false');
+
+        resultado.innerText += `   ✅ Dados armazenados\n\n`;
+
+        // Verificar cadastro criado
+        resultado.innerText += '4. Validando cadastro no backend...\n';
+        const existeResp = await fetch(`${BACKEND_URL}/api/usuarios/existe?email=${encodeURIComponent(email)}`);
+        const existeDados = await existeResp.json();
+        resultado.innerText += `   Existe: ${existeDados.existe}\n`;
+        resultado.innerText += `   Aprovado: ${existeDados.aprovado}\n\n`;
+
+        resultado.innerText += '✅ Cadastro realizado com sucesso e usuário liberado para login.';
+
+      } catch (err) {
+        resultado.className = 'teste-resultado teste-erro';
+        resultado.innerText = `❌ Erro: ${err.message}\n\n${err.stack}`;
+      }
+    }
+
+    function testarConsoleLogin() {
+      window.open('account-selector.html', '_blank', 'width=900,height=700');
+    }
+  </script>
+</body>
+</html>

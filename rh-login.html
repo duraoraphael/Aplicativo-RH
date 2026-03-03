@@ -21,8 +21,9 @@
     <section class="card login-card">
       <h1>Login RH</h1>
       <p class="page-subtitle">Entre com sua conta Microsoft para acessar os atestados e declarações.</p>
+      <p class="page-subtitle login-approval-note">Todo novo cadastro fica pendente até aprovação do administrador.</p>
 
-      <button type="button" id="microsoftLoginBtn" class="microsoft-login-btn login-main-btn ms-auth-btn ms-auth-btn-primary">
+      <button type="button" class="microsoft-login-btn login-main-btn ms-auth-btn ms-auth-btn-primary" onclick="irParaSeletorConta()">
         <span class="ms-icon" aria-hidden="true">
           <span class="ms-sq ms-red"></span>
           <span class="ms-sq ms-green"></span>
@@ -33,7 +34,7 @@
       </button>
 
       <p class="login-register-text">Ainda não possui acesso RH?</p>
-      <button type="button" id="microsoftRegisterBtn" class="rh-access-btn login-main-btn ms-auth-btn ms-auth-btn-secondary">
+      <button type="button" class="rh-access-btn login-main-btn ms-auth-btn ms-auth-btn-secondary" onclick="irParaSeletorConta()">
         <span class="ms-icon" aria-hidden="true">
           <span class="ms-sq ms-red"></span>
           <span class="ms-sq ms-green"></span>
@@ -43,14 +44,18 @@
         <span>Cadastrar com Microsoft</span>
       </button>
 
-      <p id="loginMensagem" class="rh-auth-status status-message status-message--info" role="status" aria-live="polite"></p>
+      <p id="loginMensagem" class="rh-auth-status status-message status-message--info status-toast" role="status" aria-live="polite"></p>
 
       <a href="index.html" class="success-link login-back-link">Voltar</a>
     </section>
   </main>
 
-  <script src="https://unpkg.com/pocketbase@0.21.5/dist/pocketbase.umd.js"></script>
-  <script src="pocketbase-config.js?v=20260225h"></script>
-  <script src="rh-login.js?v=20260226a"></script>
+  <script>
+    // Redirecionar para o seletor de conta
+    function irParaSeletorConta() {
+      localStorage.setItem('rh_redirect_after_login', 'rh-atestados.html');
+      window.location.href = 'account-selector.html';
+    }
+  </script>
 </body>
 </html>

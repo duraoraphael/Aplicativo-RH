@@ -25,6 +25,6 @@ npm run dev
 - `POST /api/usuarios/aprovar/:id` — Aprova usuário (define emailVisibility=true)
 
 ## Observações
-- O upload de arquivos é feito para o Firebase Storage e os links ficam públicos.
-- O Firestore armazena os metadados dos envios e usuários.
+- Os registros de atestados são gravados na coleção `envios_atestados` do Firestore.
+- Se o Firestore estiver indisponível, o backend mantém fallback local em `data/envios.json` para não interromper o fluxo.
 - O frontend pode consumir essas rotas normalmente, sem problemas de CORS.

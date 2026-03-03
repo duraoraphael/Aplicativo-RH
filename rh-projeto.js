@@ -1,3 +1,5 @@
+const BACKEND_URL = 'http://localhost:3001';
+
 const projetoTitulo = document.getElementById('projetoTitulo');
 const projetoDescricao = document.getElementById('projetoDescricao');
 const detalhesStatus = document.getElementById('detalhesStatus');
@@ -8,16 +10,55 @@ const filtroDataFimInput = document.getElementById('filtroDataFim');
 const filtroTipoSelect = document.getElementById('filtroTipoAtestado');
 const baixarFiltradosBtn = document.getElementById('baixarFiltradosBtn');
 
-
-import { db, auth } from './firebase-config.js';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { getStorage, ref, getDownloadURL } from 'firebase/storage';
+const BASES_PROJETO = {
+  '736': 'Base Imbetiba',
+  '737': 'Base Imboassica',
+  '743': 'Bases: Cabiunas, Severina e Barra do Furado',
+  '741': 'Bases: UTE, Áreas Externa e Tapera'
+};
 
 let registrosProjeto = [];
 let registrosProjetoFiltrados = [];
 let downloadMassaEmAndamento = false;
+let detalhesStatusTimer = null;
+
+async function requisicaoBackendJson(url, options = {}, tentativas = 2) {
+  let ultimaResposta = null;
+
+  for (let i = 0; i <= tentativas; i += 1) {
+    const resposta = await fetch(url, options);
+    ultimaResposta = resposta;
+
+    if (resposta.ok) {
+      return await resposta.json();
+    }
+
+    const statusRepetivel = resposta.status === 429 || resposta.status >= 500;
+    if (!statusRepetivel || i === tentativas) {
+      let detalhe = '';
+      try {
+        const body = await resposta.json();
+        detalhe = body?.error || body?.mensagem || '';
+      } catch {
+        detalhe = await resposta.text().catch(() => '');
+      }
+      throw new Error(`${resposta.status}${detalhe ? ` - ${detalhe}` : ''}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250 * (i + 1)));
+  }
+
+  throw new Error(`${ultimaResposta?.status || 'BACKEND_ERROR'}`);
+}
 
 function setDetalhesStatus(texto, tipo = 'info') {
+  if (!detalhesStatus) return;
+
+  if (detalhesStatusTimer) {
+    clearTimeout(detalhesStatusTimer);
+    detalhesStatusTimer = null;
+  }
+
   detalhesStatus.textContent = texto;
   detalhesStatus.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
   if (tipo === 'error') {
@@ -27,65 +68,28 @@ function setDetalhesStatus(texto, tipo = 'info') {
   } else {
     detalhesStatus.classList.add('status-message--info');
   }
-}
 
-function usuarioAprovado(modeloUsuario) {
-  return Boolean(modeloUsuario && modeloUsuario.emailVisibility === true);
-}
-
-const BASES_PROJETO = {
-  '736': 'Base Imbetiba',
-  '737': 'Base Imboassica',
-  '743': 'Bases: Cabiunas, Severina e Barra do Furado',
-  '741': 'Bases: UTE, Áreas Externa e Tapera'
-};
-
-function iniciarPocketBase() {
-  if (!window.POCKETBASE_CONFIG || !window.PocketBase) {
-    return false;
+  if (tipo === 'success' || tipo === 'info') {
+    detalhesStatusTimer = setTimeout(() => {
+      if (!detalhesStatus) return;
+      detalhesStatus.textContent = '';
+      detalhesStatus.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
+      detalhesStatusTimer = null;
+    }, 4000);
   }
-
-  const config = window.POCKETBASE_CONFIG;
-  const baseUrlValida = typeof config.baseUrl === 'string' && /^https?:\/\//i.test(config.baseUrl);
-  const collectionValida = typeof config.collection === 'string' && config.collection.trim().length > 0;
-
-  if (!baseUrlValida || !collectionValida) {
-    return false;
-  }
-
-  pocketbaseConfig = {
-    baseUrl: config.baseUrl.replace(/\/+$/, ''),
-    collection: config.collection
-  };
-
-  pocketbaseClient = new window.PocketBase(pocketbaseConfig.baseUrl);
-  pocketbaseClient.autoCancellation(false);
-  return true;
 }
 
 function formatarData(valorData) {
-  if (!valorData || typeof valorData !== 'string') {
-    return '-';
-  }
-
+  if (!valorData || typeof valorData !== 'string') return '-';
   const partes = valorData.split('-');
-  if (partes.length !== 3) {
-    return valorData;
-  }
-
+  if (partes.length !== 3) return valorData;
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
 function formatarDataHora(valorDataHora) {
-  if (!valorDataHora || typeof valorDataHora !== 'string') {
-    return '-';
-  }
-
+  if (!valorDataHora || typeof valorDataHora !== 'string') return '-';
   const data = new Date(valorDataHora);
-  if (Number.isNaN(data.getTime())) {
-    return valorDataHora;
-  }
-
+  if (Number.isNaN(data.getTime())) return valorDataHora;
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: '2-digit',
@@ -104,15 +108,9 @@ function normalizarTexto(valor) {
 }
 
 function obterDataISO(valorDataHora) {
-  if (!valorDataHora || typeof valorDataHora !== 'string') {
-    return '';
-  }
-
+  if (!valorDataHora || typeof valorDataHora !== 'string') return '';
   const data = new Date(valorDataHora);
-  if (Number.isNaN(data.getTime())) {
-    return '';
-  }
-
+  if (Number.isNaN(data.getTime())) return '';
   const ano = data.getFullYear();
   const mes = String(data.getMonth() + 1).padStart(2, '0');
   const dia = String(data.getDate()).padStart(2, '0');
@@ -120,10 +118,7 @@ function obterDataISO(valorDataHora) {
 }
 
 function formatarDataCurtaParaNome(dataISO) {
-  if (!dataISO || typeof dataISO !== 'string') {
-    return '00.00.00';
-  }
-
+  if (!dataISO || typeof dataISO !== 'string') return '00.00.00';
   const [ano, mes, dia] = dataISO.split('-');
   return `${dia || '00'}.${mes || '00'}.${(ano || '').slice(-2) || '00'}`;
 }
@@ -156,77 +151,13 @@ function montarNomePdfPorRegistro(record, indice = 0, totalArquivos = 1) {
   return `${base}.pdf`;
 }
 
-
-function montarLinkArquivo(record, urlArquivo) {
-  // urlArquivo já é a URL do Firebase Storage
-  return urlArquivo;
-}
-
-function montarUrlComFileToken(urlArquivo, fileToken) {
-  const separador = urlArquivo.includes('?') ? '&' : '?';
-  return `${urlArquivo}${separador}token=${encodeURIComponent(fileToken)}`;
-}
-
-async function obterUrlArquivoComToken(urlArquivo) {
-  if (!pocketbaseClient?.files?.getToken) {
-    return urlArquivo;
-  }
-
+function validarUrl(url) {
   try {
-    const tokenArquivo = await pocketbaseClient.files.getToken();
-    if (!tokenArquivo) {
-      return urlArquivo;
-    }
-    return montarUrlComFileToken(urlArquivo, tokenArquivo);
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
   } catch {
-    return urlArquivo;
+    return false;
   }
-}
-
-async function baixarBlobArquivo(urlArquivo) {
-  const urlFinal = await obterUrlArquivoComToken(urlArquivo);
-  const resposta = await fetch(urlFinal, { credentials: 'omit' });
-
-  if (!resposta.ok) {
-    const mensagemErro = await resposta.text().catch(() => '');
-    throw new Error(mensagemErro || `Falha ao baixar arquivo (HTTP ${resposta.status}).`);
-  }
-
-  return resposta.blob();
-}
-
-async function baixarArquivoComNome(urlArquivo, nomeDownload) {
-  const blob = await baixarBlobArquivo(urlArquivo);
-  const blobUrl = URL.createObjectURL(blob);
-  const linkTemporario = document.createElement('a');
-  linkTemporario.href = blobUrl;
-  linkTemporario.download = nomeDownload;
-  document.body.appendChild(linkTemporario);
-  linkTemporario.click();
-  linkTemporario.remove();
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-}
-
-function ativarDownloadComNome() {
-  document.addEventListener('click', async (event) => {
-    const link = event.target.closest('a.download-pdf-link');
-    if (!link) {
-      return;
-    }
-
-    event.preventDefault();
-
-    const urlArquivo = link.getAttribute('href');
-    const nomeCodificado = link.getAttribute('data-download-name') || '';
-    const nomeDownload = nomeCodificado ? decodeURIComponent(nomeCodificado) : (link.getAttribute('download') || 'arquivo.pdf');
-
-    try {
-      await baixarArquivoComNome(urlArquivo, nomeDownload);
-    } catch {
-      const urlComToken = await obterUrlArquivoComToken(urlArquivo);
-      window.location.href = urlComToken;
-    }
-  });
 }
 
 function criarDetalheItem(label, valor) {
@@ -237,18 +168,16 @@ function criarCardRegistro(record) {
   const card = document.createElement('article');
   card.className = 'detalhe-card';
 
-
   const arquivos = Array.isArray(record.arquivos)
     ? record.arquivos
-    : typeof record.arquivos === 'string' && record.arquivos
-      ? [record.arquivos]
-      : [];
+    : (typeof record.arquivos === 'string' && record.arquivos ? [record.arquivos] : []);
 
   const arquivosHtml = arquivos.length
     ? arquivos
+      .filter((urlArquivo) => validarUrl(urlArquivo))
       .map((urlArquivo, indice) => {
         const nomeExibicao = montarNomePdfPorRegistro(record, indice, arquivos.length);
-        return `<a class="download-pdf-link" href="${montarLinkArquivo(record, urlArquivo)}" download="${nomeExibicao}" data-download-name="${encodeURIComponent(nomeExibicao)}">${nomeExibicao}</a>`;
+        return `<a class="download-pdf-link" href="${urlArquivo}" download="${nomeExibicao}" data-download-name="${encodeURIComponent(nomeExibicao)}">${nomeExibicao}</a>`;
       })
       .join('<br>')
     : '-';
@@ -263,7 +192,7 @@ function criarCardRegistro(record) {
       ${criarDetalheItem('Data início', formatarData(record.data_inicio))}
       ${criarDetalheItem('Data fim', formatarData(record.data_fim))}
       ${criarDetalheItem('Dias', record.dias)}
-      ${criarDetalheItem('Enviado em', formatarDataHora(record.created))}
+      ${criarDetalheItem('Enviado em', formatarDataHora(record.criado_em))}
     </div>
     <div class="detalhe-arquivos">
       <span>Arquivo(s)</span>
@@ -274,28 +203,56 @@ function criarCardRegistro(record) {
   return card;
 }
 
+async function baixarArquivoComNome(urlArquivo, nomeDownload) {
+  const resposta = await fetch(urlArquivo, { credentials: 'omit' });
+  if (!resposta.ok) throw new Error('Falha ao baixar arquivo.');
+
+  const blob = await resposta.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = nomeDownload;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
+function ativarDownloadComNome() {
+  document.addEventListener('click', async (event) => {
+    const link = event.target.closest('a.download-pdf-link');
+    if (!link) return;
+
+    event.preventDefault();
+    const urlArquivo = link.getAttribute('href');
+    const nomeCodificado = link.getAttribute('data-download-name') || '';
+    const nomeDownload = nomeCodificado ? decodeURIComponent(nomeCodificado) : 'arquivo.pdf';
+
+    try {
+      await baixarArquivoComNome(urlArquivo, nomeDownload);
+    } catch {
+      window.open(urlArquivo, '_blank');
+    }
+  });
+}
+
 function coletarArquivosDosRegistros(registros) {
   return registros.flatMap((registro) => {
     const arquivos = Array.isArray(registro?.arquivos)
       ? registro.arquivos
-      : typeof registro?.arquivos === 'string' && registro.arquivos
-        ? [registro.arquivos]
-        : [];
+      : (typeof registro?.arquivos === 'string' && registro.arquivos ? [registro.arquivos] : []);
 
-    return arquivos.map((urlArquivo, indice) => {
-      return {
-        url: montarLinkArquivo(registro, urlArquivo),
+    return arquivos
+      .filter((url) => validarUrl(url))
+      .map((urlArquivo, indice) => ({
+        url: urlArquivo,
         nome: montarNomePdfPorRegistro(registro, indice, arquivos.length)
-      };
-    });
+      }));
   });
 }
 
 function atualizarBotaoDownloadEmMassa() {
-  if (!baixarFiltradosBtn) {
-    return;
-  }
-
+  if (!baixarFiltradosBtn) return;
   const totalArquivos = coletarArquivosDosRegistros(registrosProjetoFiltrados).length;
   baixarFiltradosBtn.textContent = totalArquivos > 0
     ? `Baixar PDFs filtrados (${totalArquivos})`
@@ -304,14 +261,11 @@ function atualizarBotaoDownloadEmMassa() {
 }
 
 async function baixarPdfsFiltrados() {
-  if (downloadMassaEmAndamento) {
-    return;
-  }
+  if (downloadMassaEmAndamento) return;
 
-  const arquivosParaDownload = coletarArquivosDosRegistros(registrosProjetoFiltrados);
-  if (!arquivosParaDownload.length) {
+  const arquivos = coletarArquivosDosRegistros(registrosProjetoFiltrados);
+  if (!arquivos.length) {
     setDetalhesStatus('Não há PDFs nos filtros atuais para baixar.', 'info');
-    atualizarBotaoDownloadEmMassa();
     return;
   }
 
@@ -323,71 +277,47 @@ async function baixarPdfsFiltrados() {
   downloadMassaEmAndamento = true;
   atualizarBotaoDownloadEmMassa();
 
-  let totalSucesso = 0;
-  let totalFalha = 0;
-  const zip = new window.JSZip();
-  const nomesUsados = new Set();
-  const detalhesFalhas = [];
+  try {
+    const zip = new window.JSZip();
+    const nomesUsados = new Set();
 
-  setDetalhesStatus(`Gerando ZIP com ${arquivosParaDownload.length} PDF(s) filtrado(s)...`, 'info');
+    for (const arquivo of arquivos) {
+      const resposta = await fetch(arquivo.url, { credentials: 'omit' });
+      if (!resposta.ok) continue;
 
-  const params = new URLSearchParams(window.location.search);
-  const codigoProjeto = params.get('projeto') || 'projeto';
-
-  for (let indice = 0; indice < arquivosParaDownload.length; indice += 1) {
-    const arquivo = arquivosParaDownload[indice];
-    try {
-      const blob = await baixarBlobArquivo(arquivo.url);
-      let nomeFinal = arquivo.nome;
-      if (nomesUsados.has(nomeFinal)) {
-        const nomeBase = nomeFinal.endsWith('.pdf') ? nomeFinal.slice(0, -4) : nomeFinal;
-        let sufixo = 2;
-        while (nomesUsados.has(`${nomeBase} (${sufixo}).pdf`)) {
-          sufixo += 1;
-        }
-        nomeFinal = `${nomeBase} (${sufixo}).pdf`;
+      const blob = await resposta.blob();
+      let nome = arquivo.nome;
+      if (nomesUsados.has(nome)) {
+        const base = nome.replace(/\.pdf$/i, '');
+        let i = 2;
+        while (nomesUsados.has(`${base} (${i}).pdf`)) i += 1;
+        nome = `${base} (${i}).pdf`;
       }
-
-      nomesUsados.add(nomeFinal);
-      zip.file(nomeFinal, blob);
-      totalSucesso += 1;
-    } catch (error) {
-      totalFalha += 1;
-      if (detalhesFalhas.length < 2) {
-        detalhesFalhas.push(error?.message || 'Erro desconhecido');
-      }
+      nomesUsados.add(nome);
+      zip.file(nome, blob);
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 80));
-  }
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const zipUrl = URL.createObjectURL(zipBlob);
+    const params = new URLSearchParams(window.location.search);
+    const codigoProjeto = params.get('projeto') || 'projeto';
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
-  if (totalSucesso === 0) {
-    setDetalhesStatus('Não foi possível baixar os PDFs filtrados.', 'error');
+    const link = document.createElement('a');
+    link.href = zipUrl;
+    link.download = `PDFs-Projeto-${codigoProjeto}-${timestamp}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(zipUrl), 1000);
+
+    setDetalhesStatus(`ZIP gerado com sucesso: ${arquivos.length} PDF(s).`, 'success');
+  } catch (error) {
+    setDetalhesStatus(`Erro ao gerar ZIP: ${error?.message || 'Falha no download em massa.'}`, 'error');
+  } finally {
     downloadMassaEmAndamento = false;
     atualizarBotaoDownloadEmMassa();
-    return;
   }
-
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
-  const zipUrl = URL.createObjectURL(zipBlob);
-  const linkZip = document.createElement('a');
-  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  linkZip.href = zipUrl;
-  linkZip.download = `PDFs-Projeto-${codigoProjeto}-${timestamp}.zip`;
-  document.body.appendChild(linkZip);
-  linkZip.click();
-  linkZip.remove();
-  setTimeout(() => URL.revokeObjectURL(zipUrl), 1000);
-
-  if (totalFalha === 0) {
-    setDetalhesStatus(`ZIP gerado com sucesso: ${totalSucesso} PDF(s).`, 'success');
-  } else {
-    const detalheFalha = detalhesFalhas.length ? ` Motivo: ${detalhesFalhas.join(' | ')}` : '';
-    setDetalhesStatus(`ZIP gerado parcialmente: ${totalSucesso} PDF(s) incluído(s) e ${totalFalha} falha(s).${detalheFalha}`, 'error');
-  }
-
-  downloadMassaEmAndamento = false;
-  atualizarBotaoDownloadEmMassa();
 }
 
 function preencherFiltroTipo(registros) {
@@ -413,35 +343,30 @@ function aplicarFiltros() {
   const dataMaxFiltro = dataInicioFiltro && dataFimFiltro && dataInicioFiltro > dataFimFiltro ? dataInicioFiltro : dataFimFiltro;
   const tipoFiltro = filtroTipoSelect.value;
 
-  const registrosFiltrados = registrosProjeto.filter((registro) => {
+  const filtrados = registrosProjeto.filter((registro) => {
     const nomeRegistro = normalizarTexto(registro?.nome);
-    const dataRegistro = obterDataISO(registro?.created);
+    const dataRegistro = obterDataISO(registro?.criado_em);
     const tipoRegistro = String(registro?.tipo_atestado || '');
 
     const correspondeNome = !nomeFiltro || nomeRegistro.includes(nomeFiltro);
     const correspondeDataInicio = !dataMinFiltro || (dataRegistro && dataRegistro >= dataMinFiltro);
     const correspondeDataFim = !dataMaxFiltro || (dataRegistro && dataRegistro <= dataMaxFiltro);
-    const correspondeData = correspondeDataInicio && correspondeDataFim;
     const correspondeTipo = !tipoFiltro || tipoRegistro === tipoFiltro;
 
-    return correspondeNome && correspondeData && correspondeTipo;
+    return correspondeNome && correspondeDataInicio && correspondeDataFim && correspondeTipo;
   });
 
-  registrosProjetoFiltrados = registrosFiltrados;
+  registrosProjetoFiltrados = filtrados;
   atualizarBotaoDownloadEmMassa();
-
   detalhesContainer.innerHTML = '';
 
-  if (!registrosFiltrados.length) {
+  if (!filtrados.length) {
     setDetalhesStatus('Nenhum registro encontrado com os filtros aplicados.', 'info');
     return;
   }
 
-  registrosFiltrados.forEach((registro) => {
-    detalhesContainer.appendChild(criarCardRegistro(registro));
-  });
-
-  setDetalhesStatus(`Mostrando ${registrosFiltrados.length} de ${registrosProjeto.length} registro(s).`, 'success');
+  filtrados.forEach((registro) => detalhesContainer.appendChild(criarCardRegistro(registro)));
+  setDetalhesStatus(`Mostrando ${filtrados.length} de ${registrosProjeto.length} registro(s).`, 'success');
 }
 
 function configurarEventosFiltros() {
@@ -453,10 +378,6 @@ function configurarEventosFiltros() {
     baixarFiltradosBtn.addEventListener('click', baixarPdfsFiltrados);
   }
 }
-
-
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from './firebase-config.js';
 
 async function carregarDetalhesProjeto() {
   const params = new URLSearchParams(window.location.search);
@@ -473,19 +394,11 @@ async function carregarDetalhesProjeto() {
   setDetalhesStatus('Carregando informações preenchidas...', 'info');
 
   try {
-    const snapshot = await getDocs(collection(db, 'envios_atestados'));
-    const todosRegistros = [];
-    snapshot.forEach((docSnap) => {
-      todosRegistros.push({ id: docSnap.id, ...docSnap.data() });
-    });
-
+    const todosRegistros = await requisicaoBackendJson(`${BACKEND_URL}/api/envios`);
     const padraoProjeto = new RegExp(`\\b${codigoProjeto}\\b`);
-    const registrosFiltrados = todosRegistros.filter((registro) => {
-      return padraoProjeto.test(String(registro?.projeto || ''));
-    });
 
-    registrosProjeto = registrosFiltrados;
-    registrosProjetoFiltrados = registrosFiltrados;
+    registrosProjeto = todosRegistros.filter((registro) => padraoProjeto.test(String(registro?.projeto || '')));
+    registrosProjetoFiltrados = registrosProjeto;
 
     if (!registrosProjeto.length) {
       detalhesContainer.innerHTML = '';
@@ -502,8 +415,6 @@ async function carregarDetalhesProjeto() {
   }
 }
 
-
-// Inicialização direta (sem PocketBase)
 ativarDownloadComNome();
 configurarEventosFiltros();
 carregarDetalhesProjeto();

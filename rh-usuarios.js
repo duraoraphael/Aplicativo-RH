@@ -1,13 +1,34 @@
-
-import { db, auth } from './firebase-config.js';
-import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
-
 const usuariosStatus = document.getElementById('usuariosStatus');
 const usuariosPendentes = document.getElementById('usuariosPendentes');
+const totalPendentes = document.getElementById('totalPendentes');
 const voltarPainelBtn = document.getElementById('voltarPainelBtn');
 const sairRhBtn = document.getElementById('sairRhBtn');
+const BACKEND_URL = 'http://localhost:3001';
+let usuariosStatusTimer = null;
+
+function registrarEventoBackend(acao, detalhes = {}) {
+  const payload = {
+    acao,
+    pagina: 'rh-usuarios.html',
+    email: localStorage.getItem('rh_user_email') || '',
+    usuarioId: localStorage.getItem('rh_user_id') || '',
+    detalhes
+  };
+
+  fetch(`${BACKEND_URL}/api/eventos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true
+  }).catch(() => {});
+}
 
 function setUsuariosStatus(texto, tipo = 'info') {
+  if (usuariosStatusTimer) {
+    clearTimeout(usuariosStatusTimer);
+    usuariosStatusTimer = null;
+  }
+
   usuariosStatus.textContent = texto;
   usuariosStatus.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
   if (tipo === 'error') {
@@ -17,41 +38,14 @@ function setUsuariosStatus(texto, tipo = 'info') {
   } else {
     usuariosStatus.classList.add('status-message--info');
   }
-}
 
-function iniciarPocketBase() {
-  if (!window.POCKETBASE_CONFIG || !window.PocketBase) {
-    return false;
+  if (tipo === 'success' || tipo === 'info') {
+    usuariosStatusTimer = setTimeout(() => {
+      usuariosStatus.textContent = '';
+      usuariosStatus.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
+      usuariosStatusTimer = null;
+    }, 4000);
   }
-
-  const config = window.POCKETBASE_CONFIG;
-  const baseUrlValida = typeof config.baseUrl === 'string' && /^https?:\/\//i.test(config.baseUrl);
-  const authCollectionValida = typeof config.authCollection === 'string' && config.authCollection.trim().length > 0;
-
-  if (!baseUrlValida || !authCollectionValida) {
-    return false;
-  }
-
-  pocketbaseConfig = {
-    baseUrl: config.baseUrl.replace(/\/+$/, ''),
-    authCollection: config.authCollection
-  };
-
-  pocketbaseClient = new window.PocketBase(pocketbaseConfig.baseUrl);
-  pocketbaseClient.autoCancellation(false);
-  return true;
-}
-
-function usuarioAprovado(modeloUsuario) {
-  return Boolean(modeloUsuario && modeloUsuario.emailVisibility === true);
-}
-
-function usuarioAdministrador(modeloUsuario) {
-  const emailAtual = String(modeloUsuario?.email || '').trim().toLowerCase();
-  const adminEmails = Array.isArray(window.POCKETBASE_CONFIG?.rhAdminEmails)
-    ? window.POCKETBASE_CONFIG.rhAdminEmails.map((email) => String(email).trim().toLowerCase())
-    : [];
-  return Boolean(emailAtual && adminEmails.includes(emailAtual));
 }
 
 function formatarData(valorData) {
@@ -79,17 +73,21 @@ function escaparHtml(texto) {
 
 function criarCardPendente(usuario) {
   const card = document.createElement('article');
-  card.className = 'usuario-pendente-card';
+  card.className = 'usuario-item';
 
-  const nome = escaparHtml(usuario.name || 'Sem nome');
+  const nome = escaparHtml(usuario.nome || usuario.name || 'Sem nome');
   const email = escaparHtml(usuario.email || '-');
-  const dataCadastro = formatarData(usuario.created || '');
+  const dataCadastro = escaparHtml(formatarData(usuario.criado_em || usuario.created || ''));
 
   card.innerHTML = `
-    <h3>${nome}</h3>
-    <p><strong>E-mail:</strong> ${email}</p>
-    <p><strong>Cadastrado em:</strong> ${dataCadastro}</p>
-    <button type="button" class="aprovar-usuario-btn" data-user-id="${usuario.id}">Aprovar usuário</button>
+    <div class="usuario-info">
+      <div class="usuario-nome">${nome}</div>
+      <div class="usuario-email">${email}</div>
+      <div class="usuario-data">Cadastrado em: ${dataCadastro}</div>
+    </div>
+    <div class="usuario-acoes">
+      <button type="button" class="btn-aprovar" data-user-id="${usuario.id}">Aprovar</button>
+    </div>
   `;
 
   return card;
@@ -101,11 +99,20 @@ function criarCardPendente(usuario) {
 async function carregarPendentes() {
   setUsuariosStatus('Carregando usuários pendentes...', 'info');
   usuariosPendentes.innerHTML = '';
+  if (totalPendentes) {
+    totalPendentes.textContent = '0';
+  }
   try {
-    const resp = await fetch('http://localhost:3001/api/usuarios/pendentes');
+    const resp = await fetch(`${BACKEND_URL}/api/usuarios/pendentes`);
     if (!resp.ok) throw new Error('Erro ao buscar usuários');
     const pendentes = await resp.json();
+
+    if (totalPendentes) {
+      totalPendentes.textContent = String(pendentes.length);
+    }
+
     if (!pendentes.length) {
+      usuariosPendentes.innerHTML = '<div class="status-vazio">Nenhum usuário pendente de aprovação</div>';
       setUsuariosStatus('Nenhum usuário pendente de aprovação.', 'info');
       return;
     }
@@ -123,13 +130,22 @@ async function aprovarUsuario(userId, botao) {
   botao.disabled = true;
   botao.textContent = 'Aprovando...';
   try {
-    const resp = await fetch(`http://localhost:3001/api/usuarios/aprovar/${userId}`, { method: 'POST' });
+    const resp = await fetch(`${BACKEND_URL}/api/usuarios/aprovar/${userId}`, { method: 'POST' });
     if (!resp.ok) throw new Error('Erro ao aprovar usuário');
-    const card = botao.closest('.usuario-pendente-card');
+    registrarEventoBackend('usuario_aprovado', { usuarioIdAprovado: userId });
+    const card = botao.closest('.usuario-item');
     if (card) {
       card.remove();
     }
-    const totalRestante = usuariosPendentes.querySelectorAll('.usuario-pendente-card').length;
+    const totalRestante = usuariosPendentes.querySelectorAll('.usuario-item').length;
+    if (totalPendentes) {
+      totalPendentes.textContent = String(totalRestante);
+    }
+
+    if (totalRestante === 0) {
+      usuariosPendentes.innerHTML = '<div class="status-vazio">Nenhum usuário pendente de aprovação</div>';
+    }
+
     setUsuariosStatus(
       totalRestante ? `Usuários pendentes: ${totalRestante}` : 'Nenhum usuário pendente de aprovação.',
       totalRestante ? 'success' : 'info'
@@ -142,7 +158,7 @@ async function aprovarUsuario(userId, botao) {
 }
 
 usuariosPendentes.addEventListener('click', (event) => {
-  const botao = event.target.closest('.aprovar-usuario-btn');
+  const botao = event.target.closest('.btn-aprovar');
   if (!botao) {
     return;
   }
@@ -163,13 +179,18 @@ if (voltarPainelBtn) {
 
 if (sairRhBtn) {
   sairRhBtn.addEventListener('click', () => {
-    if (pocketbaseClient) {
-      pocketbaseClient.authStore.clear();
-    }
+    const emailAtual = localStorage.getItem('rh_user_email') || '';
+    localStorage.removeItem('rh_auth_token');
+    localStorage.removeItem('rh_user_id');
+    localStorage.removeItem('rh_user_email');
+    localStorage.removeItem('rh_user_nome');
+    localStorage.removeItem('rh_user_pendente');
+    registrarEventoBackend('logout', { email: emailAtual });
     window.location.href = 'index.html';
   });
 }
 
 
-// Inicialização direta (sem PocketBase)
+// Inicialização direta
+registrarEventoBackend('acesso_pagina');
 carregarPendentes();

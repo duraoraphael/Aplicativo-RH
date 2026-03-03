@@ -9,17 +9,30 @@ const arquivos = document.getElementById('arquivos');
 const mensagem = document.getElementById('mensagem');
 const botaoEnviar = form.querySelector('button[type="submit"]');
 const rhAccessBtn = document.getElementById('rhAccessBtn');
-const rhAuthPanel = document.getElementById('rhAuthPanel');
-const microsoftLoginBtn = document.getElementById('microsoftLoginBtn');
-const rhAuthStatus = document.getElementById('rhAuthStatus');
-const rhLogoutBtn = document.getElementById('rhLogoutBtn');
+let mensagemStatusTimer = null;
 
 
 
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
-const TIMEOUT_UPLOAD_MS = 30000;
-const RH_REDIRECT_PENDING_KEY = 'rh_redirect_pending';
+const BACKEND_URL = 'http://localhost:3001';
+
+function registrarEventoBackend(acao, detalhes = {}) {
+  const payload = {
+    acao,
+    pagina: 'index.html',
+    email: localStorage.getItem('rh_user_email') || '',
+    usuarioId: localStorage.getItem('rh_user_id') || '',
+    detalhes
+  };
+
+  fetch(`${BACKEND_URL}/api/eventos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true
+  }).catch(() => {});
+}
 
 function toUTCDate(dateString) {
   const [ano, mes, dia] = dateString.split('-').map(Number);
@@ -118,23 +131,6 @@ function montarNomePdfPadrao() {
   return sanitizarNomeArquivo(`ATESTADO MÉDICO - ${dataInicioCurta} (${totalDias} ${labelDias}) - ${nomePessoa}.pdf`);
 }
 
-function criarIdUnico() {
-  if (window.crypto && typeof window.crypto.randomUUID === 'function') {
-    return window.crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function withTimeout(promise, timeoutMs, timeoutMessage) {
-  let timeoutId;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
-}
-
 function definirEstadoEnvio(carregando, textoBotao = 'Enviar') {
   botaoEnviar.disabled = carregando;
   botaoEnviar.textContent = carregando ? 'Enviando...' : textoBotao;
@@ -143,6 +139,11 @@ function definirEstadoEnvio(carregando, textoBotao = 'Enviar') {
 function definirMensagemStatus(texto, tipo = 'info') {
   if (!mensagem) {
     return;
+  }
+
+  if (mensagemStatusTimer) {
+    clearTimeout(mensagemStatusTimer);
+    mensagemStatusTimer = null;
   }
 
   mensagem.textContent = texto;
@@ -156,115 +157,27 @@ function definirMensagemStatus(texto, tipo = 'info') {
   } else {
     mensagem.classList.add('status-message--info');
   }
-}
 
-function estaAutenticado() {
-  return Boolean(pocketbaseClient && pocketbaseClient.authStore && pocketbaseClient.authStore.isValid);
-}
-
-function nomeUsuarioAutenticado() {
-  const model = pocketbaseClient?.authStore?.model;
-  return model?.name || model?.email || 'Conta Microsoft conectada';
-}
-
-function atualizarEstadoAuthUI() {
-  if (!rhAuthStatus || !microsoftLoginBtn || !rhLogoutBtn) {
-    return;
+  if (tipo === 'success' || tipo === 'info') {
+    mensagemStatusTimer = setTimeout(() => {
+      mensagem.textContent = '';
+      mensagem.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
+      mensagemStatusTimer = null;
+    }, 4000);
   }
-
-  if (estaAutenticado()) {
-    rhAuthStatus.textContent = `Conectado: ${nomeUsuarioAutenticado()}`;
-    microsoftLoginBtn.classList.add('hidden');
-    rhLogoutBtn.classList.remove('hidden');
-  } else {
-    rhAuthStatus.textContent = 'Não autenticado.';
-    microsoftLoginBtn.classList.remove('hidden');
-    rhLogoutBtn.classList.add('hidden');
-  }
-}
-
-function irParaPainelRh() {
-  sessionStorage.removeItem(RH_REDIRECT_PENDING_KEY);
-  window.location.href = 'rh-atestados.html';
-}
-
-function extrairDetalheErroAuth(error) {
-  const resposta = error?.response;
-  const possiveisDetalhes = [
-    resposta?.message,
-    resposta?.data?.message,
-    resposta?.data?.error,
-    error?.message
-  ];
-
-  for (const detalhe of possiveisDetalhes) {
-    if (typeof detalhe === 'string' && detalhe.trim()) {
-      return detalhe.trim();
-    }
-  }
-
-  return 'Erro desconhecido de autenticação OAuth.';
-}
-
-function abrirPopupOAuth(url) {
-  const largura = Math.min(1024, window.innerWidth || 1024);
-  const altura = Math.min(768, window.innerHeight || 768);
-  const esquerda = Math.max(0, Math.round(((window.innerWidth || largura) - largura) / 2));
-  const topo = Math.max(0, Math.round(((window.innerHeight || altura) - altura) / 2));
-
-  const popup = window.open(
-    url,
-    'pb_oauth2_manual',
-    `width=${largura},height=${altura},left=${esquerda},top=${topo},resizable,menubar=no`
-  );
-
-  if (!popup) {
-    throw new Error('Popup bloqueado pelo navegador.');
-  }
-}
-
-function inicializarPocketBase() {
-  if (!window.POCKETBASE_CONFIG || !window.PocketBase) {
-    return false;
-  }
-
-  const config = window.POCKETBASE_CONFIG;
-  const baseUrlValida = typeof config.baseUrl === 'string' && /^https?:\/\//i.test(config.baseUrl);
-  const collectionValida = typeof config.collection === 'string' && config.collection.trim().length > 0;
-
-  if (!baseUrlValida || !collectionValida) {
-    return false;
-  }
-
-  pocketbaseConfig = {
-    baseUrl: config.baseUrl.replace(/\/+$/, ''),
-    collection: config.collection,
-    fileField: config.fileField || 'arquivo_pdf',
-    authCollection: config.authCollection || 'users',
-    authProvider: config.authProvider || 'microsoft'
-  };
-
-  if (!pocketbaseClient) {
-    pocketbaseClient = new window.PocketBase(pocketbaseConfig.baseUrl);
-    pocketbaseClient.autoCancellation(false);
-
-    pocketbaseClient.authStore.onChange(() => {
-      const deveRedirecionar = sessionStorage.getItem(RH_REDIRECT_PENDING_KEY) === '1';
-      if (deveRedirecionar && estaAutenticado()) {
-        irParaPainelRh();
-      }
-    });
-  }
-
-  return true;
-}
-
-function montarEndpointPocketBase() {
-  return `${pocketbaseConfig.baseUrl}/api/collections/${pocketbaseConfig.collection}/records`;
 }
 
 function blobParaArquivoPdf(blob, nomeArquivo) {
   return new File([blob], nomeArquivo, { type: 'application/pdf' });
+}
+
+function blobParaBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Falha ao converter arquivo para base64.'));
+    reader.readAsDataURL(blob);
+  });
 }
 
 async function converterImagemParaPdf(arquivo) {
@@ -370,89 +283,11 @@ dias.addEventListener('input', calcularFimPorDias);
 
 if (rhAccessBtn) {
   rhAccessBtn.addEventListener('click', () => {
-    window.location.href = 'rh-login.html';
+    localStorage.setItem('rh_redirect_after_login', 'rh-atestados.html');
+    registrarEventoBackend('clicou_botao_rh');
+    window.location.href = 'account-selector.html';
   });
 }
-
-if (microsoftLoginBtn) {
-  microsoftLoginBtn.addEventListener('click', async () => {
-    const ok = inicializarPocketBase();
-    if (!ok) {
-      definirMensagemStatus('Configuração inválida do PocketBase para login Microsoft.', 'error');
-      return;
-    }
-
-    microsoftLoginBtn.disabled = true;
-    sessionStorage.setItem(RH_REDIRECT_PENDING_KEY, '1');
-    definirMensagemStatus('Iniciando login Microsoft...', 'info');
-
-    try {
-      const authMethods = await pocketbaseClient.collection(pocketbaseConfig.authCollection).listAuthMethods();
-      const oauthEnabled = Boolean(authMethods?.oauth2?.enabled);
-      const providersOauth2 = Array.isArray(authMethods?.oauth2?.providers) ? authMethods.oauth2.providers : [];
-      const providersLegado = Array.isArray(authMethods?.authProviders) ? authMethods.authProviders : [];
-      const providers = [...providersOauth2, ...providersLegado];
-      const providerOk = providers.some((provider) => provider?.name === pocketbaseConfig.authProvider);
-
-      if (!oauthEnabled || !providerOk) {
-        definirMensagemStatus('Ative OAuth2 Microsoft na coleção users (Auth methods) no PocketBase Admin.', 'error');
-        microsoftLoginBtn.disabled = false;
-        return;
-      }
-
-      await pocketbaseClient.collection(pocketbaseConfig.authCollection).authWithOAuth2({
-        provider: pocketbaseConfig.authProvider,
-        urlCallback: (url) => {
-          abrirPopupOAuth(url);
-        }
-      });
-      atualizarEstadoAuthUI();
-      definirMensagemStatus('Login Microsoft realizado com sucesso.', 'success');
-      irParaPainelRh();
-    } catch (error) {
-      if (estaAutenticado()) {
-        atualizarEstadoAuthUI();
-        definirMensagemStatus('Login Microsoft realizado com sucesso.', 'success');
-        irParaPainelRh();
-        return;
-      }
-
-      sessionStorage.removeItem(RH_REDIRECT_PENDING_KEY);
-
-      const detalheErro = extrairDetalheErroAuth(error).toLowerCase();
-
-      if (detalheErro.includes('popup') || detalheErro.includes('window')) {
-        mensagem.textContent = 'Login bloqueado por popup. Permita popups para este site e tente novamente.';
-      } else if (detalheErro.includes('aadsts90002') || detalheErro.includes('tenant') && detalheErro.includes('not found')) {
-        mensagem.textContent = 'Tenant do Microsoft Entra inválido ou não encontrado. Ajuste o provider OAuth no PocketBase.';
-      } else if (detalheErro.includes('aadsts53003') || detalheErro.includes('conditional access') || detalheErro.includes('access has been blocked by conditional access policies')) {
-        mensagem.textContent = 'Login bloqueado pela política de Acesso Condicional da Microsoft. Solicite liberação ao administrador do Entra ID.';
-      } else if (detalheErro.includes('invalid_client') || detalheErro.includes('aadsts7000215')) {
-        mensagem.textContent = 'Client Secret inválido no provider Microsoft do PocketBase.';
-      } else if (detalheErro.includes('redirect_uri') || detalheErro.includes('aadsts50011')) {
-        mensagem.textContent = 'Redirect URI inválida no Microsoft Entra. Use http://localhost:5500/rh-oauth-callback.html.';
-      } else {
-        mensagem.textContent = `Não foi possível concluir o login Microsoft: ${extrairDetalheErroAuth(error)}`;
-      }
-      definirMensagemStatus(mensagem.textContent, 'error');
-    } finally {
-      microsoftLoginBtn.disabled = false;
-    }
-  });
-}
-
-if (rhLogoutBtn) {
-  rhLogoutBtn.addEventListener('click', () => {
-    if (pocketbaseClient) {
-      pocketbaseClient.authStore.clear();
-    }
-    atualizarEstadoAuthUI();
-    definirMensagemStatus('Sessão encerrada.', 'success');
-  });
-}
-
-
-
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -500,15 +335,69 @@ form.addEventListener('submit', async (event) => {
     }
 
     // Envio para backend Node.js
-    const formData = montarFormDataEnvio(convertidos);
-    const resp = await fetch('http://localhost:3001/api/envios', {
+    // Validar dias - se inválido, recalcular a partir das datas
+    let diasEnvio = Number(dias.value) || 0;
+    
+    if (!Number.isInteger(diasEnvio) || diasEnvio < 1 || diasEnvio > 365) {
+      // Recalcular dias a partir das datas
+      if (dataInicio.value && dataFim.value) {
+        const inicio = toUTCDate(dataInicio.value);
+        const fim = toUTCDate(dataFim.value);
+        diasEnvio = Math.floor((fim - inicio) / MS_POR_DIA) + 1;
+      } else {
+        throw new Error('Preencha as datas de início e fim para calcular os dias.');
+      }
+    }
+    
+    // Garantir que dias está entre 1 e 365
+    if (diasEnvio < 1 || diasEnvio > 365) {
+      throw new Error('Os dias devem ser entre 1 e 365. Verifique as datas de início e fim.');
+    }
+    
+    const nomePdfPadrao = montarNomePdfPadrao();
+    const arquivosPayload = [];
+
+    for (let i = 0; i < convertidos.length; i += 1) {
+      const convertido = convertidos[i];
+      const nomeArquivo = convertidos.length > 1
+        ? nomePdfPadrao.replace('.pdf', ` - ANEXO ${i + 1}.pdf`)
+        : nomePdfPadrao;
+
+      const base64 = await blobParaBase64(convertido.blob);
+      arquivosPayload.push({
+        nome: nomeArquivo,
+        tipo: 'application/pdf',
+        conteudoBase64: base64
+      });
+    }
+
+    const dadosEnvio = {
+      nome: document.getElementById('nome').value.trim(),
+      funcao: document.getElementById('funcao').value.trim(),
+      projeto: document.getElementById('projeto').value,
+      tipo_atestado: tipoAtestado.value,
+      horas_comparecimento: horasInput.value ? String(Number(horasInput.value)) : '',
+      data_inicio: dataInicio.value,
+      data_fim: dataFim.value,
+      dias: diasEnvio,
+      arquivos: arquivosPayload
+    };
+    
+    const resp = await fetch(`${BACKEND_URL}/api/envios`, {
       method: 'POST',
-      body: formData
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(dadosEnvio)
     });
     if (!resp.ok) {
       const erro = await resp.text().catch(() => '');
       throw new Error(erro || 'Erro ao enviar atestado.');
     }
+    registrarEventoBackend('envio_realizado', {
+      projeto: dadosEnvio.projeto,
+      tipo_atestado: dadosEnvio.tipo_atestado
+    });
     window.location.href = 'sucesso.html';
   } catch (error) {
     definirMensagemStatus(error?.message || 'Erro ao enviar atestado.', 'error');
@@ -517,3 +406,4 @@ form.addEventListener('submit', async (event) => {
 });
 
 atualizarCampoHoras();
+registrarEventoBackend('acesso_pagina');

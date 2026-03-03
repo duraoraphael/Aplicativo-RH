@@ -2,11 +2,14 @@
   "liveServer.settings.ignoreFiles": [
     "**/.vscode/**",
     "**/.git/**",
-    "**/pb_data/**",
-    "**/pb_migrations/**",
+    "**/backend/data/**/*.json",
+    "**/backend/data/**/*.log",
+    "**/backend/data/**",
+    "**/backend/data/uploads/**",
     "**/*.db",
     "**/*.db-shm",
     "**/*.db-wal"
   ],
-  "liveServer.settings.wait": 1000
+  "liveServer.settings.wait": 1000,
+  "liveServer.settings.fullReload": false
 }

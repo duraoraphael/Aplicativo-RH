@@ -1,0 +1,42 @@
+[
+  {
+    "id": "1772537547622",
+    "email": "persist.teste@normatel.com",
+    "nome": "Persist Teste",
+    "departamento": "",
+    "cargo": "",
+    "aprovado": true,
+    "criado_em": "2026-03-03T11:32:27.622Z",
+    "criado_por_ip": "::1"
+  },
+  {
+    "id": "1772537691709",
+    "email": "raphael.campos@normatel.com.br",
+    "nome": "Raphael Durao Senos de Campos",
+    "departamento": "",
+    "cargo": "",
+    "aprovado": true,
+    "criado_em": "2026-03-03T11:34:51.709Z",
+    "criado_por_ip": "::1"
+  },
+  {
+    "id": "1772561817193",
+    "email": "pendente.teste.1772561817@normatel.com",
+    "nome": "Teste Pendente",
+    "departamento": "",
+    "cargo": "",
+    "aprovado": true,
+    "criado_em": "2026-03-03T18:16:57.193Z",
+    "criado_por_ip": "::1"
+  },
+  {
+    "id": "1772561858425",
+    "email": "pendente.teste.1772561858@normatel.com",
+    "nome": "Teste Pendente",
+    "departamento": "",
+    "cargo": "",
+    "aprovado": true,
+    "criado_em": "2026-03-03T18:17:38.425Z",
+    "criado_por_ip": "::1"
+  }
+]

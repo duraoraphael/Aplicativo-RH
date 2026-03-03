@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin RH - Gerenciar Usuários</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top-header">
+    <div class="container header-content">
+      <img src="assets/logo-normatel.png" alt="Normatel Engenharia" class="logo-normatel" />
+    </div>
+  </header>
+
+  <main class="container main-content admin-main">
+    <section class="page-head admin-page-head">
+      <h1>Gerenciamento de Usuários</h1>
+      <p class="page-subtitle">Aprove ou rejeite solicitações de acesso ao painel RH.</p>
+    </section>
+
+    <section class="card admin-overview-card">
+      <div class="admin-top-actions">
+        <div class="rh-list-btn-group">
+          <button type="button" class="rh-admin-btn" onclick="voltarParaPainel()">Voltar ao Painel RH</button>
+        </div>
+      </div>
+
+      <div class="admin-stats-grid">
+        <article class="admin-stat-card">
+          <span class="admin-stat-label">Pendentes de aprovação</span>
+          <strong class="admin-stat-number" id="totalPendentes">0</strong>
+        </article>
+      </div>
+
+      <p id="carregando" class="status-message status-message--info status-toast hidden">Carregando usuários pendentes...</p>
+      <p id="mensagem" class="status-message status-toast hidden"></p>
+    </section>
+
+    <section class="card admin-list-card">
+      <div class="admin-list-header">
+        <h2>Usuários pendentes</h2>
+      </div>
+
+      <div id="listaPendentes" class="admin-usuarios-lista">
+        <div class="status-vazio">Nenhum usuário pendente de aprovação</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="rh-admin.js?v=20260303b"></script>
+</body>
+</html>
