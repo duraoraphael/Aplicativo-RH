@@ -69,7 +69,32 @@
             window.location.replace(urlLocalhost.toString());
         }
 
-        const BACKEND_URL = 'http://localhost:3001';
+        const LOCAL_BACKEND_URL = 'http://localhost:3001';
+        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        function normalizarBackendUrl(url = '') {
+            return String(url || '').trim().replace(/\/+$/, '');
+        }
+
+        function resolverBackendUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const backendParam = normalizarBackendUrl(params.get('backend'));
+
+            if (backendParam) {
+                localStorage.setItem('rh_backend_url', backendParam);
+            }
+
+            const backendPersistido = normalizarBackendUrl(localStorage.getItem('rh_backend_url'));
+            const backendConfigurado = backendParam || backendPersistido;
+
+            if (backendConfigurado) {
+                return backendConfigurado;
+            }
+
+            return isLocalHost ? LOCAL_BACKEND_URL : '';
+        }
+
+        const BACKEND_URL = resolverBackendUrl();
         const REDIRECT_AFTER_LOGIN = localStorage.getItem('rh_redirect_after_login') || 'rh-atestados.html';
         const FIREBASE_PROJECT_HOST = localStorage.getItem('rh_firebase_project_host') || 'normatel-rh.firebaseapp.com';
         const FIREBASE_API_KEY = localStorage.getItem('rh_firebase_api_key') || 'AIzaSyCWLQteC_iYmUi_0DVEsUb5kCdki5e13bs';
@@ -120,6 +145,10 @@
         }
 
         function registrarEventoBackend(acao, detalhes = {}) {
+            if (!BACKEND_URL) {
+                return;
+            }
+
             const payload = {
                 acao,
                 pagina: 'account-selector.html',
@@ -158,10 +187,24 @@
         }
 
         async function requisicaoBackendJson(url, options = {}, tentativas = 2) {
+            if (!BACKEND_URL) {
+                throw new Error('BACKEND_URL_NOT_CONFIGURED');
+            }
+
             let ultimaResposta = null;
 
             for (let i = 0; i <= tentativas; i += 1) {
-                const resposta = await fetch(url, options);
+                let resposta;
+                try {
+                    resposta = await fetch(url, options);
+                } catch (erroRede) {
+                    if (i === tentativas) {
+                        throw new Error('BACKEND_UNREACHABLE');
+                    }
+                    await new Promise((resolve) => setTimeout(resolve, 250 * (i + 1)));
+                    continue;
+                }
+
                 ultimaResposta = resposta;
 
                 if (resposta.ok) {
@@ -629,6 +672,10 @@
                     mensagemErro = '❌ Client ID inválido para este App Registration.';
                 } else if (erroTexto.includes('firebase_api_key_missing')) {
                     mensagemErro = '❌ Falta configurar API key do Firebase no navegador: localStorage.setItem("rh_firebase_api_key","SUA_API_KEY") e recarregue.';
+                } else if (erroTexto.includes('backend_url_not_configured')) {
+                    mensagemErro = `❌ Backend não configurado para este domínio. Defina no navegador: localStorage.setItem("rh_backend_url","https://SUA-API") e recarregue.`;
+                } else if (erroTexto.includes('backend_unreachable')) {
+                    mensagemErro = `❌ Não foi possível conectar ao backend (${BACKEND_URL || 'não definido'}). Verifique se a API está publicada e com CORS liberado para ${window.location.origin}.`;
                 } else if (erroTexto.includes('failed to fetch') || erroTexto.includes('cors')) {
                     mensagemErro = '❌ Firebase bloqueado por CORS. Configure a API key local com: localStorage.setItem("rh_firebase_api_key","SUA_API_KEY") e recarregue a página.';
                 } else if (erroTexto.includes('invalid_credential_or_provider_id')) {
@@ -648,6 +695,12 @@
             registrarEventoBackend('acesso_pagina');
             document.getElementById('loginBtn').disabled = true;
             document.getElementById('registerBtn').disabled = true;
+
+            if (!BACKEND_URL) {
+                definirMensagem('⚠️ Backend não configurado neste domínio. No console: localStorage.setItem("rh_backend_url","https://SUA-API") e recarregue.', 'error');
+            } else {
+                console.log('🔗 Backend URL em uso:', BACKEND_URL);
+            }
 
             if (typeof firebase !== 'undefined') {
                 document.getElementById('registerBtn').disabled = false;
