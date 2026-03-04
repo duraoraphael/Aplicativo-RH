@@ -22989,5 +22989,511 @@
     "criado_em": "2026-03-03T19:39:16.191Z",
     "criado_por_ip": "::1",
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772566887155-5rcgbq",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "GYOAkQE2rud0sF3u3a6x6nDy2K12",
+    "detalhes": {},
+    "criado_em": "2026-03-03T19:41:27.155Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772566887188-gep4v1",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-03T19:41:27.188Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772566918621-qzl7z7",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-03T19:41:58.621Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772566977023-gdrt8i",
+    "acao": "acesso_pagina",
+    "pagina": "index.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-03T19:42:57.023Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772566977805-2dmwy5",
+    "acao": "clicou_botao_rh",
+    "pagina": "index.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-03T19:42:57.805Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772566978301-czlyd2",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-03T19:42:58.301Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772566980007-2qmx96",
+    "acao": "sessao_salva",
+    "pagina": "account-selector.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {
+      "origem": "login_microsoft",
+      "email": "raphael.campos@normatel.com.br",
+      "usuarioId": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+      "nome": "Raphael Durao Senos de Campos"
+    },
+    "criado_em": "2026-03-03T19:43:00.007Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772566982118-o76qte",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-03T19:43:02.118Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772567007791-9ezhi4",
+    "acao": "acesso_pagina",
+    "pagina": "index.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-03T19:43:27.791Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625451939-pz97yh",
+    "acao": "logout",
+    "pagina": "rh-atestados.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {
+      "email": "raphael.campos@normatel.com.br"
+    },
+    "criado_em": "2026-03-04T11:57:31.939Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625452371-3laz6p",
+    "acao": "acesso_pagina",
+    "pagina": "index.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T11:57:32.371Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625453514-eqdz8o",
+    "acao": "clicou_botao_rh",
+    "pagina": "index.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T11:57:33.514Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625453699-5ufdgf",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T11:57:33.699Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625459838-gc6pt6",
+    "acao": "sessao_salva",
+    "pagina": "account-selector.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {
+      "origem": "login_microsoft",
+      "email": "raphael.campos@normatel.com.br",
+      "usuarioId": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+      "nome": "Raphael Durao Senos de Campos"
+    },
+    "criado_em": "2026-03-04T11:57:39.839Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625461766-hmgn1c",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T11:57:41.766Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625465875-3yi8x8",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T11:57:45.875Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+  },
+  {
+    "id": "1772625471733-sdregv",
+    "acao": "sessao_salva",
+    "pagina": "account-selector.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {
+      "origem": "login_microsoft",
+      "email": "raphael.campos@normatel.com.br",
+      "usuarioId": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+      "nome": "Raphael Durao Senos de Campos"
+    },
+    "criado_em": "2026-03-04T11:57:51.733Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+  },
+  {
+    "id": "1772625473501-m18e5c",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T11:57:53.501Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+  },
+  {
+    "id": "1772625476390-d3whed",
+    "acao": "abrir_projeto",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {
+      "projeto": "743"
+    },
+    "criado_em": "2026-03-04T11:57:56.390Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+  },
+  {
+    "id": "1772625484905-r9e4bu",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T11:58:04.905Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625485568-s8wl3s",
+    "acao": "abrir_projeto",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {
+      "projeto": "736"
+    },
+    "criado_em": "2026-03-04T11:58:05.568Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625488393-eaqowa",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T11:58:08.393Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625513544-mz3ce9",
+    "acao": "logout",
+    "pagina": "rh-atestados.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {
+      "email": "raphael.campos@normatel.com.br"
+    },
+    "criado_em": "2026-03-04T11:58:33.544Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625513905-rp7q9b",
+    "acao": "acesso_pagina",
+    "pagina": "index.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T11:58:33.905Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625617373-ap3aqe",
+    "acao": "envio_realizado",
+    "pagina": "index.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {
+      "projeto": "Projeto 737 - Base Imboassica",
+      "tipo_atestado": "Declaração"
+    },
+    "criado_em": "2026-03-04T12:00:17.373Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625629956-9v9sh0",
+    "acao": "acesso_pagina",
+    "pagina": "index.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:00:29.956Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625632083-hw927n",
+    "acao": "clicou_botao_rh",
+    "pagina": "index.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:00:32.083Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625632373-qjdlen",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:00:32.373Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625634667-6lc5ia",
+    "acao": "sessao_salva",
+    "pagina": "account-selector.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {
+      "origem": "login_microsoft",
+      "email": "raphael.campos@normatel.com.br",
+      "usuarioId": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+      "nome": "Raphael Durao Senos de Campos"
+    },
+    "criado_em": "2026-03-04T12:00:34.667Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625636475-a0w53d",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:00:36.475Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772625637821-62hhma",
+    "acao": "abrir_projeto",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {
+      "projeto": "737"
+    },
+    "criado_em": "2026-03-04T12:00:37.821Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626061704-lo41i6",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:07:41.704Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626061755-w33437",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:07:41.755Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626069982-ked98f",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:07:49.982Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626069990-zai18m",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:07:49.990Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626341033-7vwx2k",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:12:21.033Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626341055-pzsdyp",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:12:21.055Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626362177-zh8rvp",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:12:42.177Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626362194-w3p8na",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:12:42.194Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626370344-8d29hz",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:12:50.344Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626370354-6m0hwd",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:12:50.354Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626394196-6nwobq",
+    "acao": "acesso_pagina",
+    "pagina": "rh-atestados.html",
+    "email": "raphael.campos@normatel.com.br",
+    "usuario_id": "2f191bd7-41a2-4924-85be-fad2fcc3bf6e",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:13:14.196Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  },
+  {
+    "id": "1772626394206-67on00",
+    "acao": "acesso_pagina",
+    "pagina": "account-selector.html",
+    "email": "",
+    "usuario_id": "",
+    "detalhes": {},
+    "criado_em": "2026-03-04T12:13:14.206Z",
+    "criado_por_ip": "::1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
   }
 ]

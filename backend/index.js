@@ -41,11 +41,11 @@ carregarVariaveisDeAmbienteLocal();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, 'data');
-const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
-const USUARIOS_FILE = path.join(DATA_DIR, 'usuarios.json');
-const ENVIOS_FILE = path.join(DATA_DIR, 'envios.json');
-const EVENTOS_FILE = path.join(DATA_DIR, 'eventos.json');
+const FIRESTORE_COLLECTIONS = {
+  envios: 'envios_atestados',
+  usuarios: 'usuarios_rh',
+  eventos: 'eventos_frontend'
+};
 
 // CONFIGURAÇÃO DE SEGURANÇA
 const ALLOWED_ORIGINS = [
@@ -63,6 +63,8 @@ const REQUEST_TRACKER = new Map(); // IP -> { count, timestamp }
 
 let firestoreDb = null;
 let firestoreInitPromise = null;
+let firebaseStorage = null;
+let firebaseStorageBucket = '';
 
 function obterServiceAccountFirebase() {
   const valor = String(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '').trim();
@@ -104,23 +106,36 @@ async function inicializarFirestore() {
         import('firebase-admin/firestore')
       ]);
 
+      const { getStorage } = await import('firebase-admin/storage');
+
       const serviceAccount = obterServiceAccountFirebase();
       if (!serviceAccount) {
         console.warn('⚠️ FIRESTORE desativado: credencial Firebase não configurada.');
         return null;
       }
 
+      const bucketConfigurado = String(process.env.FIREBASE_STORAGE_BUCKET || '').trim();
+      const bucketPadrao = serviceAccount?.project_id ? `${serviceAccount.project_id}.appspot.com` : '';
+      firebaseStorageBucket = bucketConfigurado || bucketPadrao;
+
       if (getApps().length === 0) {
         initializeApp({
-          credential: cert(serviceAccount)
+          credential: cert(serviceAccount),
+          ...(firebaseStorageBucket ? { storageBucket: firebaseStorageBucket } : {})
         });
       }
 
       firestoreDb = getFirestore();
+      firebaseStorage = getStorage();
       console.log('✓ Firestore inicializado.');
+      if (firebaseStorageBucket) {
+        console.log(`✓ Firebase Storage inicializado (${firebaseStorageBucket}).`);
+      } else {
+        console.warn('⚠️ FIREBASE_STORAGE_BUCKET não definido. Upload de anexos será bloqueado.');
+      }
       return firestoreDb;
     } catch (error) {
-      console.warn('⚠️ Firestore indisponível, mantendo persistência local:', error.message);
+      console.warn('⚠️ Firestore/Firebase Storage indisponível:', error.message);
       return null;
     }
   })();
@@ -129,27 +144,40 @@ async function inicializarFirestore() {
 }
 
 async function salvarEnvioNoFirestore(envio) {
-  const db = await inicializarFirestore();
-  if (!db) {
-    return false;
-  }
-
-  await db.collection('envios_atestados').doc(String(envio.id)).set({
+  const db = await obterFirestoreObrigatorio();
+  await db.collection(FIRESTORE_COLLECTIONS.envios).doc(String(envio.id)).set({
     ...envio,
     origem_persistencia: 'backend-node'
   }, { merge: true });
+}
 
-  return true;
+async function obterFirestoreObrigatorio() {
+  const db = await inicializarFirestore();
+  if (!db) {
+    throw new Error('FIRESTORE_NOT_CONFIGURED');
+  }
+
+  return db;
+}
+
+async function obterStorageObrigatorio() {
+  await obterFirestoreObrigatorio();
+  if (!firebaseStorage) {
+    throw new Error('FIREBASE_STORAGE_NOT_CONFIGURED');
+  }
+
+  if (!firebaseStorageBucket) {
+    throw new Error('FIREBASE_STORAGE_BUCKET_MISSING');
+  }
+
+  return firebaseStorage.bucket(firebaseStorageBucket);
 }
 
 async function listarEnviosDoFirestore(limit) {
-  const db = await inicializarFirestore();
-  if (!db) {
-    return null;
-  }
+  const db = await obterFirestoreObrigatorio();
 
   const snapshot = await db
-    .collection('envios_atestados')
+    .collection(FIRESTORE_COLLECTIONS.envios)
     .orderBy('criado_em', 'desc')
     .limit(limit)
     .get();
@@ -164,14 +192,101 @@ async function listarEnviosDoFirestore(limit) {
   });
 }
 
-function garantirDiretorioDados() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+async function salvarEventoNoFirestore(evento) {
+  const db = await obterFirestoreObrigatorio();
+  await db.collection(FIRESTORE_COLLECTIONS.eventos).doc(String(evento.id)).set({
+    ...evento,
+    origem_persistencia: 'backend-node'
+  }, { merge: true });
+}
+
+async function listarEventosDoFirestore(limit) {
+  const db = await obterFirestoreObrigatorio();
+  const snapshot = await db
+    .collection(FIRESTORE_COLLECTIONS.eventos)
+    .orderBy('criado_em', 'desc')
+    .limit(limit)
+    .get();
+
+  return snapshot.docs.map((doc) => {
+    const registro = doc.data() || {};
+    const { criado_por_ip, ...rest } = registro;
+    return {
+      id: doc.id,
+      ...rest
+    };
+  });
+}
+
+async function obterUsuarioPorEmailFirestore(email) {
+  const db = await obterFirestoreObrigatorio();
+  const snapshot = await db
+    .collection(FIRESTORE_COLLECTIONS.usuarios)
+    .where('email', '==', String(email || '').trim().toLowerCase())
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) {
+    return null;
   }
 
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  const doc = snapshot.docs[0];
+  return {
+    id: doc.id,
+    ...(doc.data() || {})
+  };
+}
+
+async function listarUsuariosPendentesFirestore() {
+  const db = await obterFirestoreObrigatorio();
+  const snapshot = await db
+    .collection(FIRESTORE_COLLECTIONS.usuarios)
+    .where('aprovado', '==', false)
+    .orderBy('criado_em', 'desc')
+    .get();
+
+  return snapshot.docs.map((doc) => {
+    const { criado_por_ip, ...rest } = (doc.data() || {});
+    return {
+      id: doc.id,
+      ...rest
+    };
+  });
+}
+
+async function criarUsuarioFirestore(usuario) {
+  const db = await obterFirestoreObrigatorio();
+  await db.collection(FIRESTORE_COLLECTIONS.usuarios).doc(String(usuario.id)).set(usuario, { merge: false });
+}
+
+async function aprovarUsuarioFirestore(id) {
+  const db = await obterFirestoreObrigatorio();
+  const ref = db.collection(FIRESTORE_COLLECTIONS.usuarios).doc(String(id));
+  const doc = await ref.get();
+
+  if (!doc.exists) {
+    return false;
   }
+
+  await ref.set({
+    aprovado: true,
+    atualizado_em: new Date().toISOString()
+  }, { merge: true });
+
+  return true;
+}
+
+async function rejeitarUsuarioFirestore(id) {
+  const db = await obterFirestoreObrigatorio();
+  const ref = db.collection(FIRESTORE_COLLECTIONS.usuarios).doc(String(id));
+  const doc = await ref.get();
+
+  if (!doc.exists) {
+    return false;
+  }
+
+  await ref.delete();
+  return true;
 }
 
 function sanitizarNomeArquivo(nomeArquivo = 'arquivo.pdf') {
@@ -183,30 +298,25 @@ function sanitizarNomeArquivo(nomeArquivo = 'arquivo.pdf') {
   return nomeSeguro || 'arquivo.pdf';
 }
 
-function montarBaseUrl(req) {
-  const protocolo = req.headers['x-forwarded-proto'] || 'http';
-  const host = req.headers.host || `localhost:${process.env.PORT || 3001}`;
-  return `${protocolo}://${host}`;
-}
-
-function salvarArquivosDoEnvio(req, envioId, arquivosEntrada) {
+async function salvarArquivosDoEnvioNoStorage(envioId, arquivosEntrada) {
   if (!Array.isArray(arquivosEntrada) || arquivosEntrada.length === 0) {
     return [];
   }
 
-  const baseUrl = montarBaseUrl(req);
+  const bucket = await obterStorageObrigatorio();
   const urls = [];
 
-  arquivosEntrada.forEach((arquivo, indice) => {
+  for (let indice = 0; indice < arquivosEntrada.length; indice += 1) {
+    const arquivo = arquivosEntrada[indice];
     if (!arquivo || typeof arquivo !== 'object') {
-      return;
+      continue;
     }
 
     const nomeOriginal = sanitizarNomeArquivo(arquivo.nome || `anexo-${indice + 1}.pdf`);
     const mimeType = String(arquivo.tipo || 'application/pdf');
     const conteudoBase64 = String(arquivo.conteudoBase64 || '');
     if (!conteudoBase64) {
-      return;
+      continue;
     }
 
     let base64 = conteudoBase64;
@@ -217,42 +327,38 @@ function salvarArquivosDoEnvio(req, envioId, arquivosEntrada) {
 
     const buffer = Buffer.from(base64, 'base64');
     if (!buffer.length) {
-      return;
+      continue;
     }
 
     const extensao = path.extname(nomeOriginal) || (mimeType.includes('pdf') ? '.pdf' : '');
     const nomeBase = path.basename(nomeOriginal, extensao || undefined);
     const nomeFinal = `${envioId}-${indice + 1}-${Date.now()}-${nomeBase}${extensao}`;
-    const caminhoArquivo = path.join(UPLOADS_DIR, nomeFinal);
+    const caminhoStorage = `envios/${envioId}/${nomeFinal}`;
 
-    fs.writeFileSync(caminhoArquivo, buffer);
-    urls.push(`${baseUrl}/uploads/${encodeURIComponent(nomeFinal)}`);
-  });
+    const file = bucket.file(caminhoStorage);
+    await file.save(buffer, {
+      resumable: false,
+      metadata: {
+        contentType: mimeType,
+        cacheControl: 'private, max-age=0, no-transform',
+        metadata: {
+          envioId: String(envioId),
+          nomeOriginal,
+          criadoEm: new Date().toISOString()
+        }
+      }
+    });
+
+    const [urlAssinada] = await file.getSignedUrl({
+      action: 'read',
+      expires: '03-01-2500'
+    });
+
+    urls.push(urlAssinada);
+  }
 
   return urls;
 }
-
-function carregarLista(arquivo) {
-  try {
-    if (!fs.existsSync(arquivo)) return [];
-    const bruto = fs.readFileSync(arquivo, 'utf8');
-    const parsed = JSON.parse(bruto || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (err) {
-    console.warn(`Falha ao carregar ${arquivo}:`, err.message);
-    return [];
-  }
-}
-
-function salvarLista(arquivo, dados) {
-  fs.writeFileSync(arquivo, JSON.stringify(dados, null, 2), 'utf8');
-}
-
-garantirDiretorioDados();
-
-let envios = carregarLista(ENVIOS_FILE);
-let usuarios = carregarLista(USUARIOS_FILE);
-let eventos = carregarLista(EVENTOS_FILE);
 
 // Rate Limiting
 function verificarRateLimit(chave, limitePorMinuto = MAX_REQUESTS_PER_MINUTE) {
@@ -418,25 +524,8 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (pathname.startsWith('/uploads/') && req.method === 'GET') {
-      const nomeArquivo = decodeURIComponent(pathname.replace('/uploads/', ''));
-      if (!nomeArquivo || nomeArquivo.includes('..') || nomeArquivo.includes('/') || nomeArquivo.includes('\\')) {
-        res.writeHead(400);
-        res.end(JSON.stringify({ error: 'Arquivo inválido' }));
-        return;
-      }
-
-      const caminhoArquivo = path.join(UPLOADS_DIR, nomeArquivo);
-      if (!fs.existsSync(caminhoArquivo)) {
-        res.writeHead(404);
-        res.end(JSON.stringify({ error: 'Arquivo não encontrado' }));
-        return;
-      }
-
-      const ext = path.extname(caminhoArquivo).toLowerCase();
-      const contentType = ext === '.pdf' ? 'application/pdf' : 'application/octet-stream';
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', `inline; filename="${nomeArquivo.replace(/"/g, '')}"`);
-      fs.createReadStream(caminhoArquivo).pipe(res);
+      res.writeHead(410);
+      res.end(JSON.stringify({ error: 'Rota local de uploads desativada. Os anexos agora são servidos via Firebase Storage.' }));
       return;
     }
 
@@ -474,19 +563,23 @@ const server = http.createServer(async (req, res) => {
         arquivos: []
       };
 
-      const arquivosSalvos = salvarArquivosDoEnvio(req, novoEnvio.id, body.arquivos);
-      if (arquivosSalvos.length > 0) {
-        novoEnvio.arquivos = arquivosSalvos;
+      try {
+        const arquivosSalvos = await salvarArquivosDoEnvioNoStorage(novoEnvio.id, body.arquivos);
+        if (arquivosSalvos.length > 0) {
+          novoEnvio.arquivos = arquivosSalvos;
+        }
+      } catch (storageError) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao enviar anexos para Firebase Storage (${storageError.message})` }));
+        return;
       }
 
-      envios.push(novoEnvio);
-      salvarLista(ENVIOS_FILE, envios);
-
-      let salvoNoFirestore = false;
       try {
-        salvoNoFirestore = await salvarEnvioNoFirestore(novoEnvio);
+        await salvarEnvioNoFirestore(novoEnvio);
       } catch (firestoreError) {
-        console.warn('Falha ao gravar envio no Firestore:', firestoreError.message);
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao gravar envio no Firestore (${firestoreError.message})` }));
+        return;
       }
 
       res.writeHead(201);
@@ -494,7 +587,7 @@ const server = http.createServer(async (req, res) => {
         id: novoEnvio.id,
         success: true,
         arquivos: novoEnvio.arquivos,
-        firestore: salvoNoFirestore
+        firestore: true
       }));
       return;
     }
@@ -503,34 +596,30 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/envios' && req.method === 'GET') {
       const limit = Math.min(parseInt(parsedUrl.query.limit) || 100, 1000);
 
-      let data = null;
       try {
-        data = await listarEnviosDoFirestore(limit);
+        const data = await listarEnviosDoFirestore(limit);
+        res.writeHead(200);
+        res.end(JSON.stringify(data));
+        return;
       } catch (firestoreError) {
-        console.warn('Falha ao listar envios do Firestore, usando base local:', firestoreError.message);
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao listar envios do Firestore (${firestoreError.message})` }));
+        return;
       }
-
-      if (!Array.isArray(data)) {
-        data = envios
-          .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
-          .slice(0, limit)
-          .map(({ criado_por_ip, ...rest }) => rest);
-      }
-      
-      res.writeHead(200);
-      res.end(JSON.stringify(data));
-      return;
     }
 
     // Listar usuários pendentes
     if (pathname === '/api/usuarios/pendentes' && req.method === 'GET') {
-      const data = usuarios
-        .filter(u => u.aprovado === false)
-        .map(({ ...rest }) => rest);
-      
-      res.writeHead(200);
-      res.end(JSON.stringify(data));
-      return;
+      try {
+        const data = await listarUsuariosPendentesFirestore();
+        res.writeHead(200);
+        res.end(JSON.stringify(data));
+        return;
+      } catch (firestoreError) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao listar usuários pendentes (${firestoreError.message})` }));
+        return;
+      }
     }
 
     // Registrar evento de uso do frontend
@@ -557,12 +646,14 @@ const server = http.createServer(async (req, res) => {
         user_agent: normalizarTextoCurto(req.headers['user-agent'] || '', 300)
       };
 
-      eventos.push(novoEvento);
-      if (eventos.length > 5000) {
-        eventos = eventos.slice(eventos.length - 5000);
+      try {
+        await salvarEventoNoFirestore(novoEvento);
+      } catch (firestoreError) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao registrar evento no Firestore (${firestoreError.message})` }));
+        return;
       }
 
-      salvarLista(EVENTOS_FILE, eventos);
       res.writeHead(201);
       res.end(JSON.stringify({ success: true, id: novoEvento.id }));
       return;
@@ -571,14 +662,16 @@ const server = http.createServer(async (req, res) => {
     // Listar eventos de uso
     if (pathname === '/api/eventos' && req.method === 'GET') {
       const limit = Math.min(parseInt(parsedUrl.query.limit) || 200, 1000);
-      const data = eventos
-        .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
-        .slice(0, limit)
-        .map(({ criado_por_ip, ...rest }) => rest);
-
-      res.writeHead(200);
-      res.end(JSON.stringify(data));
-      return;
+      try {
+        const data = await listarEventosDoFirestore(limit);
+        res.writeHead(200);
+        res.end(JSON.stringify(data));
+        return;
+      } catch (firestoreError) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao listar eventos do Firestore (${firestoreError.message})` }));
+        return;
+      }
     }
 
     // Verificar se usuário existe por e-mail
@@ -591,7 +684,15 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const usuario = usuarios.find(u => u.email === email);
+      let usuario;
+      try {
+        usuario = await obterUsuarioPorEmailFirestore(email);
+      } catch (firestoreError) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao consultar usuário no Firestore (${firestoreError.message})` }));
+        return;
+      }
+
       if (!usuario) {
         res.writeHead(200);
         res.end(JSON.stringify({ existe: false }));
@@ -630,7 +731,15 @@ const server = http.createServer(async (req, res) => {
         }
 
         // Verificar se usuário já existe
-        const usuarioExistente = usuarios.find(u => u.email === body.email);
+        let usuarioExistente;
+        try {
+          usuarioExistente = await obterUsuarioPorEmailFirestore(body.email);
+        } catch (firestoreError) {
+          res.writeHead(503);
+          res.end(JSON.stringify({ error: `Falha ao consultar cadastro no Firestore (${firestoreError.message})` }));
+          return;
+        }
+
         if (usuarioExistente) {
           if (usuarioExistente.aprovado) {
             res.writeHead(200);
@@ -654,8 +763,14 @@ const server = http.createServer(async (req, res) => {
           criado_por_ip: ip
         };
 
-        usuarios.push(novoUsuario);
-        salvarLista(USUARIOS_FILE, usuarios);
+        try {
+          await criarUsuarioFirestore(novoUsuario);
+        } catch (firestoreError) {
+          res.writeHead(503);
+          res.end(JSON.stringify({ error: `Falha ao gravar cadastro no Firestore (${firestoreError.message})` }));
+          return;
+        }
+
         res.writeHead(202);
         res.end(JSON.stringify({ id: novoUsuario.id, status: 'pendente', mensagem: 'Cadastro realizado e aguardando aprovação do administrador.' }));
         return;
@@ -676,10 +791,16 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       
-      const user = usuarios.find(u => u.id === id);
-      if (user) {
-        user.aprovado = true;
-        salvarLista(USUARIOS_FILE, usuarios);
+      let aprovado = false;
+      try {
+        aprovado = await aprovarUsuarioFirestore(id);
+      } catch (firestoreError) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao aprovar usuário no Firestore (${firestoreError.message})` }));
+        return;
+      }
+
+      if (aprovado) {
         res.writeHead(200);
         res.end(JSON.stringify({ id, aprovado: true, mensagem: 'Usuário aprovado com sucesso' }));
         return;
@@ -700,10 +821,16 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       
-      const idx = usuarios.findIndex(u => u.id === id);
-      if (idx !== -1) {
-        usuarios.splice(idx, 1);
-        salvarLista(USUARIOS_FILE, usuarios);
+      let rejeitado = false;
+      try {
+        rejeitado = await rejeitarUsuarioFirestore(id);
+      } catch (firestoreError) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao rejeitar usuário no Firestore (${firestoreError.message})` }));
+        return;
+      }
+
+      if (rejeitado) {
         res.writeHead(200);
         res.end(JSON.stringify({ id, rejeitado: true, mensagem: 'Usuário removido' }));
         return;
@@ -717,7 +844,15 @@ const server = http.createServer(async (req, res) => {
     // Health check
     if (pathname === '/api/health' && req.method === 'GET') {
       res.writeHead(200);
-      res.end(JSON.stringify({ status: 'healthy' }));
+      res.end(JSON.stringify({
+        status: 'healthy',
+        persistencia: 'firebase-only',
+        firebase: {
+          firestoreInicializado: !!firestoreDb,
+          storageInicializado: !!firebaseStorage,
+          storageBucket: firebaseStorageBucket || null
+        }
+      }));
       return;
     }
 

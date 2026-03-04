@@ -25,6 +25,10 @@ npm run dev
 - `POST /api/usuarios/aprovar/:id` — Aprova usuário (define emailVisibility=true)
 
 ## Observações
-- Os registros de atestados são gravados na coleção `envios_atestados` do Firestore.
-- Se o Firestore estiver indisponível, o backend mantém fallback local em `data/envios.json` para não interromper o fluxo.
-- O frontend pode consumir essas rotas normalmente, sem problemas de CORS.
+- Os dados do sistema são gravados diretamente no Firestore (sem fallback local):
+	- `envios_atestados` (atestados)
+	- `usuarios_rh` (cadastros/aprovações)
+	- `eventos_frontend` (logs de uso)
+- Os anexos dos atestados são gravados diretamente no Firebase Storage (bucket definido por `FIREBASE_STORAGE_BUCKET` ou `<project_id>.appspot.com`).
+- Se o Firestore não estiver configurado ou indisponível, as rotas retornam erro `503`.
+- A rota local `/uploads/*` foi desativada; os links de anexos retornados já apontam para URL assinada do Firebase Storage.

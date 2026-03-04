@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "script.js",
   "scripts": {
+    "start": "npm --prefix backend start",
+    "dev": "npm --prefix backend run dev",
+    "postinstall": "npm --prefix backend install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
