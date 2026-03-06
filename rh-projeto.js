@@ -223,6 +223,24 @@ function montarUrlForcarDownload(urlArquivo, nomeDownload) {
   }
 }
 
+async function garantirMetadataDownload(urlArquivo, nomeDownload) {
+  if (!window.storage || typeof window.storage.refFromURL !== 'function') {
+    return urlArquivo;
+  }
+
+  try {
+    const ref = window.storage.refFromURL(urlArquivo);
+    const nomeSeguro = sanitizarNomeArquivoDownload(nomeDownload);
+    await ref.updateMetadata({
+      contentDisposition: `attachment; filename="${nomeSeguro}"`,
+      contentType: 'application/pdf'
+    });
+    return await ref.getDownloadURL();
+  } catch {
+    return urlArquivo;
+  }
+}
+
 function criarDetalheItem(label, valor) {
   return `<div class="detalhe-item"><span>${label}</span><strong>${valor || '-'}</strong></div>`;
 }
@@ -269,7 +287,8 @@ function criarCardRegistro(record) {
 }
 
 async function baixarArquivoComNome(urlArquivo, nomeDownload) {
-  const urlDownload = montarUrlForcarDownload(urlArquivo, nomeDownload);
+  const urlComMetadata = await garantirMetadataDownload(urlArquivo, nomeDownload);
+  const urlDownload = montarUrlForcarDownload(urlComMetadata, nomeDownload);
   const link = document.createElement('a');
   link.href = urlDownload;
   link.download = nomeDownload;
@@ -301,7 +320,7 @@ function ativarDownloadComNome() {
     try {
       await baixarArquivoComNome(urlArquivo, nomeDownload);
     } catch {
-      window.open(urlArquivo, '_blank');
+      setDetalhesStatus('Não foi possível iniciar o download deste arquivo.', 'error');
     }
   });
 }

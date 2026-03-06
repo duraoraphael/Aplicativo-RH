@@ -151,6 +151,24 @@ async function baixarArquivoComNome(urlArquivo, nomeDownload) {
   linkTemporario.remove();
 }
 
+async function garantirMetadataDownload(urlArquivo, nomeDownload) {
+  if (!window.storage || typeof window.storage.refFromURL !== 'function') {
+    return urlArquivo;
+  }
+
+  try {
+    const ref = window.storage.refFromURL(urlArquivo);
+    const nomeSeguro = sanitizarNomeArquivoDownload(nomeDownload);
+    await ref.updateMetadata({
+      contentDisposition: `attachment; filename="${nomeSeguro}"`,
+      contentType: 'application/pdf'
+    });
+    return await ref.getDownloadURL();
+  } catch {
+    return urlArquivo;
+  }
+}
+
 function ativarDownloadComNome() {
   document.addEventListener('click', async (event) => {
     const link = event.target.closest('a.download-pdf-link');
@@ -166,9 +184,10 @@ function ativarDownloadComNome() {
     const nomeDownload = nomeCodificado ? decodeURIComponent(nomeCodificado) : (link.getAttribute('download') || 'arquivo.pdf');
 
     try {
-      await baixarArquivoComNome(urlArquivo, nomeDownload);
+      const urlComMetadata = await garantirMetadataDownload(urlArquivo, nomeDownload);
+      await baixarArquivoComNome(urlComMetadata, nomeDownload);
     } catch {
-      window.location.href = montarUrlForcarDownload(urlArquivo, nomeDownload);
+      setListaStatus('Nao foi possivel iniciar o download deste arquivo.', 'error');
     }
   });
 }

@@ -620,6 +620,23 @@ select:focus-visible {
   line-height: 1.4;
 }
 
+.rh-list-actions--project {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 12px;
+}
+
+.rh-list-actions--project .rh-list-status {
+  min-width: 0;
+}
+
+.project-back-link {
+  margin-top: 0;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .page-head {
   position: relative;
 }
@@ -1419,6 +1436,18 @@ select:focus-visible {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
+  }
+
+  .rh-list-actions--project {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 10px;
+  }
+
+  .rh-list-actions--project .project-back-link {
+    width: auto;
+    justify-self: end;
   }
 
   .page-head::after {
