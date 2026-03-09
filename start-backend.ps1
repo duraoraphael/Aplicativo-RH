@@ -1,42 +1,37 @@
-# Script para iniciar o Backend RH em desenvolvimento
+# Script para iniciar o Backend RH em desenvolvimento (ASCII-safe)
 
-# Cores para output
 $CorVerde = "Green"
 $CorVermelho = "Red"
 $CorAmarelo = "Yellow"
 $CorAzul = "Cyan"
 
-Write-Host "╔════════════════════════════════════════╗" -ForegroundColor $CorAzul
-Write-Host "║     RH Aplicativo - Backend RH         ║" -ForegroundColor $CorAzul
-Write-Host "║     Iniciando servidor de backend      ║" -ForegroundColor $CorAzul
-Write-Host "╚════════════════════════════════════════╝" -ForegroundColor $CorAzul
+Write-Host "========================================" -ForegroundColor $CorAzul
+Write-Host " RH Aplicativo - Backend RH " -ForegroundColor $CorAzul
+Write-Host "========================================" -ForegroundColor $CorAzul
 Write-Host ""
 
-# Diretório do projeto
 $projectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $backendDir = Join-Path $projectDir "backend"
 
-Write-Host "📁 Diretório do projeto: $projectDir" -ForegroundColor $CorAzul
-Write-Host "📁 Diretório do backend: $backendDir" -ForegroundColor $CorAzul
+Write-Host "Project dir: $projectDir" -ForegroundColor $CorAzul
+Write-Host "Backend dir: $backendDir" -ForegroundColor $CorAzul
 Write-Host ""
 
-# Verificar se Node.js está instalado
-Write-Host "🔍 Verificando Node.js..." -ForegroundColor $CorAmarelo
+Write-Host "Checking Node.js..." -ForegroundColor $CorAmarelo
 $nodeCheck = node --version 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Node.js não está instalado!" -ForegroundColor $CorVermelho
-    Write-Host "   Baixe de: https://nodejs.org" -ForegroundColor $CorVermelho
+    Write-Host "Node.js is not installed." -ForegroundColor $CorVermelho
+    Write-Host "Install from https://nodejs.org" -ForegroundColor $CorVermelho
     exit 1
 }
-Write-Host "✓ Node.js encontrado: $nodeCheck" -ForegroundColor $CorVerde
+
+Write-Host "Node found: $nodeCheck" -ForegroundColor $CorVerde
+Write-Host ""
+Write-Host "Starting backend on port 3001..." -ForegroundColor $CorVerde
 Write-Host ""
 
-# Início do backend
-Write-Host "🚀 Iniciando servidor backend na porta 3001..." -ForegroundColor $CorVerde
-Write-Host ""
-
-cd $backendDir
+Set-Location $backendDir
 node index.js
 
 Write-Host ""
-Write-Host "⚠️  Servidor encerrado." -ForegroundColor $CorAmarelo
+Write-Host "Backend stopped." -ForegroundColor $CorAmarelo

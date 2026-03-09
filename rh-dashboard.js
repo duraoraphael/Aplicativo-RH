@@ -461,6 +461,7 @@ function inicializarDashboard() {
     gerenciarUsuariosBtn.classList.remove('hidden');
     console.log('✅ Botão admin visível');
   }
+
 }
 
 // Executar quando DOM está pronto

@@ -1,4 +1,5 @@
 import http from 'http';
+import https from 'https';
 import url from 'url';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -318,6 +319,74 @@ function sanitizarNomeArquivo(nomeArquivo = 'arquivo.pdf') {
   return nomeSeguro || 'arquivo.pdf';
 }
 
+function urlProxyPermitida(urlArquivo) {
+  try {
+    const parsed = new URL(String(urlArquivo || ''));
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return false;
+    }
+
+    const host = String(parsed.hostname || '').toLowerCase();
+    return host === 'firebasestorage.googleapis.com' || host === 'storage.googleapis.com';
+  } catch {
+    return false;
+  }
+}
+
+function baixarArquivoRemoto(urlArquivo, redirecionamentosRestantes = 3) {
+  return new Promise((resolve, reject) => {
+    let parsed;
+    try {
+      parsed = new URL(String(urlArquivo || ''));
+    } catch {
+      reject(new Error('URL inválida para proxy'));
+      return;
+    }
+
+    const isHttps = parsed.protocol === 'https:';
+    const cliente = isHttps ? https : http;
+    const req = cliente.request(parsed, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'rh-backend-proxy/1.0'
+      },
+      // Ambiente corporativo pode interceptar TLS; permite operação do proxy local.
+      ...(isHttps ? { rejectUnauthorized: false } : {})
+    }, (resp) => {
+      const status = Number(resp.statusCode || 0);
+      const location = resp.headers.location;
+
+      if (status >= 300 && status < 400 && location && redirecionamentosRestantes > 0) {
+        const proximaUrl = new URL(location, parsed).toString();
+        resp.resume();
+        baixarArquivoRemoto(proximaUrl, redirecionamentosRestantes - 1).then(resolve).catch(reject);
+        return;
+      }
+
+      if (status < 200 || status >= 300) {
+        resp.resume();
+        reject(new Error(`Arquivo remoto indisponível (${status})`));
+        return;
+      }
+
+      const chunks = [];
+      resp.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      resp.on('end', () => {
+        resolve({
+          buffer: Buffer.concat(chunks),
+          contentType: String(resp.headers['content-type'] || 'application/octet-stream')
+        });
+      });
+    });
+
+    req.on('error', (error) => {
+      reject(new Error(`Falha ao baixar arquivo remoto (${error.message})`));
+    });
+
+    req.end();
+  });
+}
+
 async function salvarArquivosDoEnvioNoStorage(envioId, arquivosEntrada) {
   if (!Array.isArray(arquivosEntrada) || arquivosEntrada.length === 0) {
     return [];
@@ -629,6 +698,38 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // Proxy de download para contornar CORS na geração de ZIP no frontend
+    if (pathname === '/api/arquivos/proxy' && req.method === 'GET') {
+      const urlArquivo = String(parsedUrl.query.url || '').trim();
+      const nomeArquivo = sanitizarNomeArquivo(parsedUrl.query.nome || 'arquivo.pdf');
+
+      if (!urlArquivo) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Parâmetro url é obrigatório' }));
+        return;
+      }
+
+      if (!urlProxyPermitida(urlArquivo)) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'URL não permitida para proxy' }));
+        return;
+      }
+
+      try {
+        const remoto = await baixarArquivoRemoto(urlArquivo);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', remoto.contentType || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(remoto.buffer);
+        return;
+      } catch (erroFetch) {
+        res.writeHead(502);
+        res.end(JSON.stringify({ error: `Falha ao baixar arquivo remoto (${erroFetch.message})` }));
+        return;
+      }
+    }
+
     // Listar usuários pendentes
     if (pathname === '/api/usuarios/pendentes' && req.method === 'GET') {
       try {
@@ -894,6 +995,7 @@ server.listen(PORT, () => {
   console.log(`\nEndpoints disponíveis:`);
   console.log(`  - GET  /api/health`);
   console.log(`  - GET  /api/envios?limit=100`);
+  console.log(`  - GET  /api/arquivos/proxy?url=...&nome=...`);
   console.log(`  - POST /api/envios`);
   console.log(`  - GET  /api/eventos?limit=200`);
   console.log(`  - POST /api/eventos`);

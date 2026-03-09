@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%235fbe4a'/%3E%3Cpath d='M14 34h36v8H14zM14 22h36v8H14z' fill='white'/%3E%3C/svg%3E" />
+  <title>Dashboard RH - Demandas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top-header">
+    <div class="container header-content">
+      <img src="assets/logo-normatel.png" alt="Normatel Engenharia" class="logo-normatel" />
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <section class="page-head">
+      <h1>Dashboard de Demandas</h1>
+      <p class="page-subtitle">Acompanhamento de envios e projetos em andamento.</p>
+    </section>
+
+    <section class="card rh-list-card">
+      <div class="rh-list-actions rh-list-actions--project">
+        <p id="dashboardStatus" class="rh-list-status status-message status-message--info status-toast">Carregando dashboard...</p>
+        <a href="rh-atestados.html" class="success-link project-back-link">Voltar ao Painel RH</a>
+      </div>
+
+      <div class="rh-demandas-grid" aria-label="Resumo geral">
+        <article class="rh-demanda-card">
+          <span class="rh-demanda-label">Total de envios</span>
+          <strong id="dashTotalEnvios" class="rh-demanda-number">--</strong>
+        </article>
+        <article class="rh-demanda-card">
+          <span class="rh-demanda-label">Enviados hoje</span>
+          <strong id="dashHoje" class="rh-demanda-number">--</strong>
+        </article>
+        <article class="rh-demanda-card">
+          <span class="rh-demanda-label">Ultimos 7 dias</span>
+          <strong id="dashSemana" class="rh-demanda-number">--</strong>
+        </article>
+        <article class="rh-demanda-card">
+          <span class="rh-demanda-label">Projetos ativos</span>
+          <strong id="dashProjetosAtivos" class="rh-demanda-number">--</strong>
+        </article>
+      </div>
+
+      <div class="rh-project-search">
+        <label for="filtroProjetoDemandas">Pesquisar projetos em andamento</label>
+        <input id="filtroProjetoDemandas" type="text" placeholder="Digite codigo ou nome do projeto" />
+        <p id="filtroProjetoDemandasInfo" class="rh-project-search-info">Mostrando todos os projetos em andamento.</p>
+      </div>
+
+      <section class="rh-chart-card" aria-label="Grafico de envios por projeto">
+        <h2>Envios por projeto</h2>
+        <div id="graficoProjetos" class="rh-chart-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="rh-demandas.js?v=20260309a"></script>
+</body>
+</html>

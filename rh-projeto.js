@@ -15,7 +15,8 @@ const BASES_PROJETO = {
   '736': 'Base Imbetiba',
   '737': 'Base Imboassica',
   '743': 'Bases: Cabiunas, Severina e Barra do Furado',
-  '741': 'Bases: UTE, Áreas Externa e Tapera'
+  '741': 'Bases: UTE, Áreas Externa e Tapera',
+  'Apoio Macae': 'Base de apoio'
 };
 
 let registrosProjeto = [];
@@ -58,7 +59,32 @@ function erroPermissaoFirestore(error) {
 }
 
 function resolverBackendUrl() {
-  return BACKEND_URL;
+  const candidatos = listarBackendsCandidatos();
+  return candidatos[0] || '';
+}
+
+function listarBackendsCandidatos() {
+  const urls = [];
+
+  if (BACKEND_URL) {
+    urls.push(BACKEND_URL);
+  }
+
+  if (typeof window !== 'undefined') {
+    const hostname = String(window.location.hostname || '').toLowerCase();
+    const origin = String(window.location.origin || '').trim().replace(/\/+$/, '');
+    const ehLocal = hostname === 'localhost' || hostname === '127.0.0.1' || window.location.protocol === 'file:';
+
+    if (ehLocal) {
+      urls.push('http://localhost:3001');
+    }
+
+    if (origin && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+      urls.push(origin);
+    }
+  }
+
+  return [...new Set(urls.filter(Boolean))];
 }
 
 async function carregarEnviosComFallback() {
@@ -70,17 +96,21 @@ async function carregarEnviosComFallback() {
       throw error;
     }
 
-    const backendBase = resolverBackendUrl();
-    if (!backendBase) {
+    const backends = listarBackendsCandidatos();
+    if (!backends.length) {
       throw new Error('Sem permissão no Firestore para ler envios_atestados. Publique regras no Firebase Console liberando leitura desta coleção para o painel RH.');
     }
 
-    try {
-      const dados = await requisicaoBackendJson(`${backendBase}/api/envios?limit=1000`);
-      return Array.isArray(dados) ? dados : [];
-    } catch (erroBackend) {
-      throw new Error(`Backend indisponível (${backendBase}) e Firestore sem permissão para envios_atestados.`);
+    for (const backendBase of backends) {
+      try {
+        const dados = await requisicaoBackendJson(`${backendBase}/api/envios?limit=1000`);
+        return Array.isArray(dados) ? dados : [];
+      } catch {
+        // tenta próximo backend candidato
+      }
     }
+
+    throw new Error(`Backends indisponíveis (${backends.join(', ')}) e Firestore sem permissão para envios_atestados.`);
   }
 }
 
@@ -306,6 +336,37 @@ function ehUrlFirebaseStorage(urlArquivo) {
   }
 }
 
+async function baixarBlobParaZip(urlArquivo, nomeArquivo) {
+  const backends = listarBackendsCandidatos();
+  if (!backends.length) {
+    throw new Error('BACKEND_PROXY_NOT_AVAILABLE');
+  }
+
+  for (const backendBase of backends) {
+    const proxyUrl = `${backendBase}/api/arquivos/proxy?url=${encodeURIComponent(urlArquivo)}&nome=${encodeURIComponent(nomeArquivo)}`;
+    try {
+      const respostaProxy = await fetch(proxyUrl, { credentials: 'omit' });
+      if (respostaProxy.ok) {
+        return await respostaProxy.blob();
+      }
+    } catch {
+      // tenta próximo backend
+    }
+  }
+
+  throw new Error('BACKEND_PROXY_UNREACHABLE');
+}
+
+async function baixarArquivosIndividualmente(arquivos) {
+  for (let i = 0; i < arquivos.length; i += 1) {
+    const arquivo = arquivos[i];
+    await baixarArquivoComNome(arquivo.url, arquivo.nome);
+    if (i < arquivos.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 180));
+    }
+  }
+}
+
 function ativarDownloadComNome() {
   document.addEventListener('click', async (event) => {
     const link = event.target.closest('a.download-pdf-link');
@@ -344,8 +405,8 @@ function atualizarBotaoDownloadEmMassa() {
   if (!baixarFiltradosBtn) return;
   const totalArquivos = coletarArquivosDosRegistros(registrosProjetoFiltrados).length;
   baixarFiltradosBtn.textContent = totalArquivos > 0
-    ? `Baixar PDFs filtrados (${totalArquivos})`
-    : 'Baixar PDFs filtrados';
+    ? `Exportação em massa (${totalArquivos})`
+    : 'Exportação em massa';
   baixarFiltradosBtn.disabled = totalArquivos === 0 || downloadMassaEmAndamento;
 }
 
@@ -354,7 +415,7 @@ async function baixarPdfsFiltrados() {
 
   const arquivos = coletarArquivosDosRegistros(registrosProjetoFiltrados);
   if (!arquivos.length) {
-    setDetalhesStatus('Não há PDFs nos filtros atuais para baixar.', 'info');
+    setDetalhesStatus('Não há arquivos nos filtros atuais para exportar.', 'info');
     return;
   }
 
@@ -365,31 +426,23 @@ async function baixarPdfsFiltrados() {
 
   downloadMassaEmAndamento = true;
   atualizarBotaoDownloadEmMassa();
+  setDetalhesStatus('Gerando arquivo ZIP da exportação em massa...', 'info');
+
+  const backends = listarBackendsCandidatos();
+  if (!backends.length) {
+    await baixarArquivosIndividualmente(arquivos);
+    setDetalhesStatus('Backend de exportação não configurado. Downloads individuais iniciados com sucesso.', 'info');
+    downloadMassaEmAndamento = false;
+    atualizarBotaoDownloadEmMassa();
+    return;
+  }
 
   try {
-    const temArquivoComRestricaoCors = arquivos.some((arquivo) => ehUrlFirebaseStorage(arquivo.url));
-    if (temArquivoComRestricaoCors) {
-      // Em localhost o Firebase Storage pode bloquear fetch por CORS. Faz download direto de cada arquivo.
-      for (let i = 0; i < arquivos.length; i += 1) {
-        const arquivo = arquivos[i];
-        await baixarArquivoComNome(arquivo.url, arquivo.nome);
-        if (i < arquivos.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 180));
-        }
-      }
-
-      setDetalhesStatus('Downloads iniciados individualmente (ZIP indisponível em localhost por CORS do Firebase Storage).', 'info');
-      return;
-    }
-
     const zip = new window.JSZip();
     const nomesUsados = new Set();
 
     for (const arquivo of arquivos) {
-      const resposta = await fetch(arquivo.url, { credentials: 'omit' });
-      if (!resposta.ok) continue;
-
-      const blob = await resposta.blob();
+      const blob = await baixarBlobParaZip(arquivo.url, arquivo.nome);
       let nome = arquivo.nome;
       if (nomesUsados.has(nome)) {
         const base = nome.replace(/\.pdf$/i, '');
@@ -409,15 +462,22 @@ async function baixarPdfsFiltrados() {
 
     const link = document.createElement('a');
     link.href = zipUrl;
-    link.download = `PDFs-Projeto-${codigoProjeto}-${timestamp}.zip`;
+    link.download = `Exportacao-em-massa-Projeto-${codigoProjeto}-${timestamp}.zip`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(zipUrl), 1000);
 
-    setDetalhesStatus(`ZIP gerado com sucesso: ${arquivos.length} PDF(s).`, 'success');
+    setDetalhesStatus(`ZIP gerado com sucesso: ${arquivos.length} arquivo(s).`, 'success');
   } catch (error) {
-    setDetalhesStatus(`Erro ao gerar ZIP: ${error?.message || 'Falha no download em massa.'}`, 'error');
+    await baixarArquivosIndividualmente(arquivos);
+    if (error?.message === 'BACKEND_PROXY_NOT_AVAILABLE') {
+      setDetalhesStatus('Backend de exportação não configurado. Downloads individuais iniciados com sucesso.', 'info');
+    } else if (error?.message === 'BACKEND_PROXY_UNREACHABLE') {
+      setDetalhesStatus('Backend de exportação indisponível. Downloads individuais iniciados com sucesso.', 'info');
+    } else {
+      setDetalhesStatus(`ZIP indisponível no momento (${error?.message || 'falha desconhecida'}). Downloads individuais iniciados com sucesso.`, 'info');
+    }
   } finally {
     downloadMassaEmAndamento = false;
     atualizarBotaoDownloadEmMassa();

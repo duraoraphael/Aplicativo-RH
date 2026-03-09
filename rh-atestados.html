@@ -28,6 +28,7 @@
         <p id="listaStatus" class="rh-list-status status-message status-message--info status-toast">Carregando...</p>
         <div class="rh-list-btn-group">
           <button type="button" id="gerenciarUsuariosBtn" class="rh-admin-btn hidden" onclick="irParaAdmin()">Aprovar usuários</button>
+          <button type="button" id="abrirDashboardDemandasBtn" class="rh-admin-btn" onclick="irParaDashboardDemandas()">Dashboard</button>
           <button type="button" id="sairRhBtn" class="rh-logout-btn" onclick="fazerLogout()">Sair</button>
         </div>
       </div>
@@ -48,6 +49,10 @@
         <button type="button" class="projeto-card" data-projeto="741" onclick="abrirProjetoEmNovaAba('741')">
           <strong>Projeto 741</strong>
           <span>Bases: UTE, Áreas Externa e Tapera</span>
+        </button>
+        <button type="button" class="projeto-card" data-projeto="Apoio Macae" onclick="abrirProjetoEmNovaAba('Apoio Macae')">
+          <strong>Apoio Macae</strong>
+          <span>Base de apoio</span>
         </button>
       </div>
 
@@ -111,6 +116,12 @@
       window.location.href = 'rh-admin.html';
     }
 
+    function irParaDashboardDemandas() {
+      console.log('📊 Indo para dashboard de demandas');
+      registrarEventoBackend('abrir_dashboard_demandas');
+      window.location.href = 'rh-demandas.html';
+    }
+
     function abrirProjetoEmNovaAba(codigoProjeto) {
       const destino = `rh-projeto.html?projeto=${encodeURIComponent(codigoProjeto)}`;
       registrarEventoBackend('abrir_projeto', { projeto: codigoProjeto });
@@ -122,6 +133,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="rh-dashboard.js?v=20260306f"></script>
+  <script src="rh-dashboard.js?v=20260306i"></script>
 </body>
 </html>
