@@ -499,6 +499,17 @@ function preencherFiltroTipo(registros) {
   });
 }
 
+function aplicarFiltroTipoInicialDaUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const tipoInicial = String(params.get('tipo') || '').trim();
+  if (!tipoInicial) return;
+
+  const optionExiste = Array.from(filtroTipoSelect.options).some((opt) => opt.value === tipoInicial);
+  if (optionExiste) {
+    filtroTipoSelect.value = tipoInicial;
+  }
+}
+
 function aplicarFiltros() {
   const nomeFiltro = normalizarTexto(filtroNomeInput.value);
   const dataInicioFiltro = filtroDataInicioInput.value;
@@ -575,6 +586,7 @@ async function carregarDetalhesProjeto() {
     }
 
     preencherFiltroTipo(registrosProjeto);
+    aplicarFiltroTipoInicialDaUrl();
     aplicarFiltros();
   } catch (error) {
     setDetalhesStatus(`Erro ao carregar informações: ${error?.message || 'Falha ao carregar dados do projeto.'}`, 'error');

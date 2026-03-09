@@ -25,8 +25,8 @@
 
     <section class="card rh-list-card">
       <div class="rh-list-actions">
-        <p id="listaStatus" class="rh-list-status status-message status-message--info status-toast">Carregando...</p>
-        <div class="rh-list-btn-group">
+        <p id="listaStatus" class="rh-list-status status-message status-message--info status-toast status-toast-floating">Carregando...</p>
+        <div class="rh-list-btn-group rh-list-btn-group--fixed">
           <button type="button" id="gerenciarUsuariosBtn" class="rh-admin-btn hidden" onclick="irParaAdmin()">Aprovar usuários</button>
           <button type="button" id="abrirDashboardDemandasBtn" class="rh-admin-btn" onclick="irParaDashboardDemandas()">Dashboard</button>
           <button type="button" id="sairRhBtn" class="rh-logout-btn" onclick="fazerLogout()">Sair</button>
@@ -123,7 +123,9 @@
     }
 
     function abrirProjetoEmNovaAba(codigoProjeto) {
-      const destino = `rh-projeto.html?projeto=${encodeURIComponent(codigoProjeto)}`;
+      const params = new URLSearchParams();
+      params.set('projeto', codigoProjeto);
+      const destino = `rh-projeto.html?${params.toString()}`;
       registrarEventoBackend('abrir_projeto', { projeto: codigoProjeto });
       window.location.href = destino;
     }
@@ -133,6 +135,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="rh-dashboard.js?v=20260306i"></script>
+  <script src="rh-dashboard.js?v=20260309j"></script>
 </body>
 </html>

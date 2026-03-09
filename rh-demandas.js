@@ -5,12 +5,52 @@ const totalEnviosEl = document.getElementById('dashTotalEnvios');
 const hojeEl = document.getElementById('dashHoje');
 const semanaEl = document.getElementById('dashSemana');
 const projetosAtivosEl = document.getElementById('dashProjetosAtivos');
+const filtroCriterioBuscaDemandasEl = document.getElementById('filtroCriterioBuscaDemandas');
 const filtroProjetoInput = document.getElementById('filtroProjetoDemandas');
+const filtroProjetoSelectDemandasEl = document.getElementById('filtroProjetoSelectDemandas');
+const filtroTipoDemandasEl = document.getElementById('filtroTipoDemandas');
+const limparFiltrosDemandasBtn = document.getElementById('limparFiltrosDemandasBtn');
 const filtroProjetoInfoEl = document.getElementById('filtroProjetoDemandasInfo');
 const graficoProjetosEl = document.getElementById('graficoProjetos');
+const graficoTiposAtestadoEl = document.getElementById('graficoTiposAtestado');
+const legendaTiposAtestadoEl = document.getElementById('legendaTiposAtestado');
+const tabProjetoBtn = document.getElementById('tabProjetoBtn');
+const tabTipoBtn = document.getElementById('tabTipoBtn');
+const painelGraficoProjetos = document.getElementById('painelGraficoProjetos');
+const painelGraficoTipos = document.getElementById('painelGraficoTipos');
 
 let todosRegistros = [];
 let resumoProjetos = [];
+
+const CLASSES_TIPO_ATESTADO = {
+  medico: 'rh-chart-column-bar--medico',
+  declaracao: 'rh-chart-column-bar--declaracao',
+  odontologico: 'rh-chart-column-bar--odontologico',
+  maternidade: 'rh-chart-column-bar--maternidade',
+  outro: 'rh-chart-column-bar--outro'
+};
+
+function alternarAbaGrafico(aba) {
+  const mostrarProjetos = aba === 'projetos';
+
+  if (tabProjetoBtn) {
+    tabProjetoBtn.classList.toggle('is-active', mostrarProjetos);
+    tabProjetoBtn.setAttribute('aria-selected', mostrarProjetos ? 'true' : 'false');
+  }
+  if (tabTipoBtn) {
+    tabTipoBtn.classList.toggle('is-active', !mostrarProjetos);
+    tabTipoBtn.setAttribute('aria-selected', mostrarProjetos ? 'false' : 'true');
+  }
+
+  if (painelGraficoProjetos) {
+    painelGraficoProjetos.classList.toggle('hidden', !mostrarProjetos);
+    painelGraficoProjetos.classList.toggle('rh-chart-panel--active', mostrarProjetos);
+  }
+  if (painelGraficoTipos) {
+    painelGraficoTipos.classList.toggle('hidden', mostrarProjetos);
+    painelGraficoTipos.classList.toggle('rh-chart-panel--active', !mostrarProjetos);
+  }
+}
 
 function setDashboardStatus(texto, tipo = 'info') {
   if (!dashboardStatus) return;
@@ -32,6 +72,14 @@ function normalizarTextoBusca(valor) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+}
+
+function atualizarPlaceholderBuscaDashboard() {
+  if (!filtroProjetoInput) return;
+  const criterio = String(filtroCriterioBuscaDemandasEl?.value || 'projeto').trim();
+  filtroProjetoInput.placeholder = criterio === 'tipo'
+    ? 'Digite o tipo de atestado'
+    : 'Digite codigo ou nome do projeto';
 }
 
 function erroPermissaoFirestore(error) {
@@ -130,6 +178,94 @@ function montarResumoProjetos(registros) {
   return Array.from(mapa.values()).sort((a, b) => b.total - a.total);
 }
 
+function preencherFiltroTipoDemandas(registros) {
+  if (!filtroTipoDemandasEl) return;
+
+  const tiposUnicos = [...new Set(registros
+    .map((registro) => String(registro?.tipo_atestado || '').trim())
+    .filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  filtroTipoDemandasEl.innerHTML = '<option value="">Todos os tipos</option>';
+  tiposUnicos.forEach((tipo) => {
+    const option = document.createElement('option');
+    option.value = tipo;
+    option.textContent = tipo;
+    filtroTipoDemandasEl.appendChild(option);
+  });
+}
+
+function preencherFiltroProjetoDemandas(registros) {
+  if (!filtroProjetoSelectDemandasEl) return;
+
+  const projetoSelecionadoAtual = String(filtroProjetoSelectDemandasEl.value || '').trim();
+  const projetosUnicos = [...new Set(registros
+    .map((registro) => String(registro?.projeto || '').trim())
+    .filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  filtroProjetoSelectDemandasEl.innerHTML = '<option value="">Todos os projetos</option>';
+  projetosUnicos.forEach((projeto) => {
+    const option = document.createElement('option');
+    option.value = projeto;
+    option.textContent = projeto;
+    filtroProjetoSelectDemandasEl.appendChild(option);
+  });
+
+  const optionExiste = Array.from(filtroProjetoSelectDemandasEl.options).some((opt) => opt.value === projetoSelecionadoAtual);
+  if (optionExiste) {
+    filtroProjetoSelectDemandasEl.value = projetoSelecionadoAtual;
+  }
+}
+
+function montarResumoTiposAtestado(registros) {
+  const mapa = new Map();
+
+  registros.forEach((registro) => {
+    const tipo = String(registro?.tipo_atestado || '').trim() || 'Tipo nao informado';
+    const atual = mapa.get(tipo) || { tipo, total: 0 };
+    atual.total += 1;
+    mapa.set(tipo, atual);
+  });
+
+  return Array.from(mapa.values()).sort((a, b) => b.total - a.total);
+}
+
+function chaveTipoAtestado(tipo) {
+  const normalizado = normalizarTextoBusca(tipo);
+  if (normalizado.includes('declaracao')) return 'declaracao';
+  if (normalizado.includes('odontologico')) return 'odontologico';
+  if (normalizado.includes('maternidade')) return 'maternidade';
+  if (normalizado.includes('medico')) return 'medico';
+  return 'outro';
+}
+
+function renderizarLegendaTiposAtestado(listaTipos) {
+  if (!legendaTiposAtestadoEl) return;
+
+  legendaTiposAtestadoEl.innerHTML = '';
+  if (!listaTipos.length) return;
+
+  const tiposUnicos = [...new Set(listaTipos.map((item) => String(item.tipo || '').trim()).filter(Boolean))];
+
+  tiposUnicos.forEach((tipo) => {
+    const chave = chaveTipoAtestado(tipo);
+
+    const chip = document.createElement('span');
+    chip.className = 'rh-chart-legend-item';
+
+    const cor = document.createElement('i');
+    cor.className = `rh-chart-legend-dot ${CLASSES_TIPO_ATESTADO[chave] || CLASSES_TIPO_ATESTADO.outro}`;
+
+    const texto = document.createElement('strong');
+    texto.textContent = tipo;
+
+    chip.appendChild(cor);
+    chip.appendChild(texto);
+    legendaTiposAtestadoEl.appendChild(chip);
+  });
+}
+
 function renderizarGraficoProjetos(listaProjetos) {
   graficoProjetosEl.innerHTML = '';
 
@@ -173,20 +309,116 @@ function renderizarGraficoProjetos(listaProjetos) {
   graficoProjetosEl.appendChild(colunas);
 }
 
+function renderizarGraficoTiposAtestado(listaTipos) {
+  if (!graficoTiposAtestadoEl) return;
+
+  graficoTiposAtestadoEl.innerHTML = '';
+  renderizarLegendaTiposAtestado(listaTipos);
+
+  if (!listaTipos.length) {
+    graficoTiposAtestadoEl.innerHTML = '<p class="rh-project-search-info">Nenhum tipo encontrado para o filtro atual.</p>';
+    return;
+  }
+
+  const max = Math.max(...listaTipos.map((item) => item.total), 1);
+  const colunas = document.createElement('div');
+  colunas.className = 'rh-chart-columns';
+
+  listaTipos.forEach((item) => {
+    const coluna = document.createElement('article');
+    coluna.className = 'rh-chart-column';
+
+    const barraArea = document.createElement('div');
+    barraArea.className = 'rh-chart-column-wrap';
+
+    const barra = document.createElement('div');
+    const chave = chaveTipoAtestado(item.tipo);
+    barra.className = `rh-chart-column-bar ${CLASSES_TIPO_ATESTADO[chave] || CLASSES_TIPO_ATESTADO.outro}`;
+    barra.style.height = `${Math.max(12, Math.round((item.total / max) * 100))}%`;
+    barra.title = `${item.tipo}: ${item.total}`;
+
+    const valor = document.createElement('span');
+    valor.className = 'rh-chart-column-value';
+    valor.textContent = String(item.total);
+
+    const label = document.createElement('div');
+    label.className = 'rh-chart-column-label';
+    label.textContent = item.tipo;
+    label.title = item.tipo;
+
+    barra.appendChild(valor);
+    barraArea.appendChild(barra);
+    coluna.appendChild(barraArea);
+    coluna.appendChild(label);
+    colunas.appendChild(coluna);
+  });
+
+  graficoTiposAtestadoEl.appendChild(colunas);
+}
+
 function aplicarFiltroProjetoDashboard() {
   const termo = normalizarTextoBusca(filtroProjetoInput.value);
+  const criterioBusca = String(filtroCriterioBuscaDemandasEl?.value || 'projeto').trim();
+  const projetoSelecionado = String(filtroProjetoSelectDemandasEl?.value || '').trim();
+  const tipoSelecionado = String(filtroTipoDemandasEl?.value || '').trim();
 
-  const filtrados = !termo
-    ? resumoProjetos
-    : resumoProjetos.filter((item) => normalizarTextoBusca(item.projeto).includes(termo));
+  const registrosFiltradosBase = todosRegistros.filter((registro) => {
+    const projetoRegistro = String(registro?.projeto || '').trim();
+    const tipoRegistro = String(registro?.tipo_atestado || '').trim();
+
+    const correspondeProjetoSelecionado = !projetoSelecionado || projetoRegistro === projetoSelecionado;
+    const correspondeTipoSelecionado = !tipoSelecionado || tipoRegistro === tipoSelecionado;
+
+    return correspondeProjetoSelecionado && correspondeTipoSelecionado;
+  });
+
+  const registrosComBusca = !termo
+    ? registrosFiltradosBase
+    : registrosFiltradosBase.filter((registro) => {
+      const projetoRegistro = normalizarTextoBusca(registro?.projeto);
+      const tipoRegistro = normalizarTextoBusca(registro?.tipo_atestado);
+      return criterioBusca === 'tipo'
+        ? tipoRegistro.includes(termo)
+        : projetoRegistro.includes(termo);
+    });
+
+  const resumoBase = montarResumoProjetos(registrosComBusca);
+  const filtrados = resumoBase;
 
   renderizarGraficoProjetos(filtrados);
 
+  const registrosFiltrados = registrosComBusca;
+  const resumoTipos = montarResumoTiposAtestado(registrosFiltrados);
+  renderizarGraficoTiposAtestado(resumoTipos);
+
   if (!termo) {
-    filtroProjetoInfoEl.textContent = 'Mostrando todos os projetos em andamento.';
+    if (projetoSelecionado && tipoSelecionado) {
+      filtroProjetoInfoEl.textContent = `Mostrando projeto "${projetoSelecionado}" no tipo "${tipoSelecionado}".`;
+    } else if (projetoSelecionado) {
+      filtroProjetoInfoEl.textContent = `Mostrando projeto "${projetoSelecionado}".`;
+    } else if (tipoSelecionado) {
+      filtroProjetoInfoEl.textContent = `Mostrando todos os projetos para o tipo "${tipoSelecionado}".`;
+    } else {
+      filtroProjetoInfoEl.textContent = 'Mostrando todos os projetos em andamento.';
+    }
   } else {
-    filtroProjetoInfoEl.textContent = `Mostrando ${filtrados.length} de ${resumoProjetos.length} projeto(s).`;
+    const alvo = criterioBusca === 'tipo' ? 'tipo(s)' : 'projeto(s)';
+    filtroProjetoInfoEl.textContent = `Busca por ${alvo}: ${resumoBase.length} resultado(s).`;
   }
+}
+
+function limparFiltrosDashboard() {
+  if (filtroProjetoInput) {
+    filtroProjetoInput.value = '';
+  }
+  if (filtroProjetoSelectDemandasEl) {
+    filtroProjetoSelectDemandasEl.value = '';
+  }
+  if (filtroTipoDemandasEl) {
+    filtroTipoDemandasEl.value = '';
+  }
+
+  aplicarFiltroProjetoDashboard();
 }
 
 async function carregarDashboardDemandas() {
@@ -197,6 +429,8 @@ async function carregarDashboardDemandas() {
     atualizarResumoGeral(todosRegistros);
 
     resumoProjetos = montarResumoProjetos(todosRegistros);
+    preencherFiltroProjetoDemandas(todosRegistros);
+    preencherFiltroTipoDemandas(todosRegistros);
     aplicarFiltroProjetoDashboard();
 
     setDashboardStatus('Dashboard atualizado com sucesso.', 'success');
@@ -204,6 +438,7 @@ async function carregarDashboardDemandas() {
     atualizarResumoGeral([]);
     resumoProjetos = [];
     renderizarGraficoProjetos([]);
+    renderizarGraficoTiposAtestado([]);
     setDashboardStatus(`Erro ao carregar dashboard: ${error?.message || 'Falha ao buscar dados.'}`, 'error');
   }
 }
@@ -211,5 +446,35 @@ async function carregarDashboardDemandas() {
 if (filtroProjetoInput) {
   filtroProjetoInput.addEventListener('input', aplicarFiltroProjetoDashboard);
 }
+
+if (filtroCriterioBuscaDemandasEl) {
+  filtroCriterioBuscaDemandasEl.addEventListener('change', () => {
+    atualizarPlaceholderBuscaDashboard();
+    aplicarFiltroProjetoDashboard();
+  });
+}
+
+if (filtroProjetoSelectDemandasEl) {
+  filtroProjetoSelectDemandasEl.addEventListener('change', aplicarFiltroProjetoDashboard);
+}
+
+if (filtroTipoDemandasEl) {
+  filtroTipoDemandasEl.addEventListener('change', aplicarFiltroProjetoDashboard);
+}
+
+if (limparFiltrosDemandasBtn) {
+  limparFiltrosDemandasBtn.addEventListener('click', limparFiltrosDashboard);
+}
+
+if (tabProjetoBtn) {
+  tabProjetoBtn.addEventListener('click', () => alternarAbaGrafico('projetos'));
+}
+
+if (tabTipoBtn) {
+  tabTipoBtn.addEventListener('click', () => alternarAbaGrafico('tipos'));
+}
+
+alternarAbaGrafico('projetos');
+atualizarPlaceholderBuscaDashboard();
 
 carregarDashboardDemandas();
