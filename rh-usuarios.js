@@ -7,6 +7,10 @@ const BACKEND_URL = (localStorage.getItem('rh_backend_url') || '').trim().replac
 let usuariosStatusTimer = null;
 
 function registrarEventoBackend(acao, detalhes = {}) {
+  if (!BACKEND_URL) {
+    return;
+  }
+
   const payload = {
     acao,
     pagina: 'rh-usuarios.html',

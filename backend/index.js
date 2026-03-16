@@ -598,10 +598,18 @@ function obterIpCliente(req) {
          'unknown';
 }
 
+function extrairHostDaUrl(urlStr) {
+  try {
+    return [new URL(urlStr).host];
+  } catch {
+    return [];
+  }
+}
+
 // Conjunto de hosts permitidos para redirecionamento HTTPS (derivado das origens permitidas)
 const ALLOWED_HOSTS = new Set([
   'aplicativo-rh-pb-normatel.fly.dev',
-  ...(process.env.FRONTEND_URL ? (() => { try { return [new URL(process.env.FRONTEND_URL).host]; } catch { return []; } })() : []),
+  ...(process.env.FRONTEND_URL ? extrairHostDaUrl(process.env.FRONTEND_URL) : []),
 ]);
 
 // CORS middleware com whitelist
@@ -639,7 +647,7 @@ const server = http.createServer(async (req, res) => {
   if (proto === 'http' && process.env.NODE_ENV === 'production') {
     const host = String(req.headers.host || '').toLowerCase().replace(/:\d+$/, '');
     if (ALLOWED_HOSTS.has(host)) {
-      res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
+      res.writeHead(301, { Location: `https://${host}${req.url}` });
       res.end();
       return;
     }
