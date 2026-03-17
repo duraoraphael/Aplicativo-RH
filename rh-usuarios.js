@@ -3,10 +3,14 @@ const usuariosPendentes = document.getElementById('usuariosPendentes');
 const totalPendentes = document.getElementById('totalPendentes');
 const voltarPainelBtn = document.getElementById('voltarPainelBtn');
 const sairRhBtn = document.getElementById('sairRhBtn');
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = (localStorage.getItem('rh_backend_url') || '').trim().replace(/\/+$/, '');
 let usuariosStatusTimer = null;
 
 function registrarEventoBackend(acao, detalhes = {}) {
+  if (!BACKEND_URL) {
+    return;
+  }
+
   const payload = {
     acao,
     pagina: 'rh-usuarios.html',

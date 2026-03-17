@@ -54,6 +54,8 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5500',
   'http://127.0.0.1:5500',
   // 'http://localhost:8080' // removido: não usar emulador
+  'https://aplicativo-rh-pb-normatel.fly.dev',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.trim().replace(/\/+$/, '')] : []),
 ];
 
 const MAX_PAYLOAD_SIZE = 30 * 1024 * 1024; // 30MB
@@ -596,8 +598,22 @@ function obterIpCliente(req) {
          'unknown';
 }
 
+function extrairHostDaUrl(urlStr) {
+  try {
+    return [new URL(urlStr).host];
+  } catch {
+    return [];
+  }
+}
+
+// Conjunto de hosts permitidos para redirecionamento HTTPS (derivado das origens permitidas)
+const ALLOWED_HOSTS = new Set([
+  'aplicativo-rh-pb-normatel.fly.dev',
+  ...(process.env.FRONTEND_URL ? extrairHostDaUrl(process.env.FRONTEND_URL) : []),
+]);
+
 // CORS middleware com whitelist
-function setCORSHeaders(res, origem) {
+function setCORSHeaders(res, origem, proto) {
   const origemEhLocalhost = typeof origem === 'string' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origem);
   const origemPermitida = ALLOWED_ORIGINS.includes(origem) || origemEhLocalhost;
 
@@ -614,6 +630,9 @@ function setCORSHeaders(res, origem) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
+  if (proto === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  }
 }
 
 // Servidor HTTP
@@ -622,8 +641,19 @@ const server = http.createServer(async (req, res) => {
   const ip = obterIpCliente(req);
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
-  
-  setCORSHeaders(res, origem);
+  const proto = String(req.headers['x-forwarded-proto'] || '').toLowerCase();
+
+  // Redirecionar HTTP → HTTPS em produção (valida host contra whitelist)
+  if (proto === 'http' && process.env.NODE_ENV === 'production') {
+    const host = String(req.headers.host || '').toLowerCase().replace(/:\d+$/, '');
+    if (ALLOWED_HOSTS.has(host)) {
+      res.writeHead(301, { Location: `https://${host}${req.url}` });
+      res.end();
+      return;
+    }
+  }
+
+  setCORSHeaders(res, origem, proto);
 
   // Verificar rate limit
   const ehRotaEvento = pathname === '/api/eventos';
