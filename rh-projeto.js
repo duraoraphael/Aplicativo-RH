@@ -12,7 +12,37 @@ const filtroPendentesBtn = document.getElementById('filtroPendentesBtn');
 const filtroFeitosBtn = document.getElementById('filtroFeitosBtn');
 const baixarFiltradosBtn = document.getElementById('baixarFiltradosBtn');
 const voltarPainelRhProjetoBtn = document.getElementById('voltarPainelRhProjetoBtn');
-const BACKEND_URL = (localStorage.getItem('rh_backend_url') || '').trim().replace(/\/+$/, '');
+const DEFAULT_REMOTE_BACKEND_URL = '';
+
+function resolverBackendUrl() {
+  const valorConfigurado = String(localStorage.getItem('rh_backend_url') || '').trim();
+
+  if (valorConfigurado) {
+    try {
+      const url = new URL(valorConfigurado);
+      const hostLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+      if (!hostLocal && url.protocol === 'http:') {
+        url.protocol = 'https:';
+      }
+      return url.toString().replace(/\/+$/, '');
+    } catch {
+      return valorConfigurado.replace(/\/+$/, '');
+    }
+  }
+
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'http://localhost:3001';
+  }
+
+  if (window.__RH_BACKEND_URL__) {
+    return String(window.__RH_BACKEND_URL__).trim().replace(/\/+$/, '');
+  }
+
+  return DEFAULT_REMOTE_BACKEND_URL;
+}
+
+const BACKEND_URL = resolverBackendUrl();
 
 const BASES_PROJETO = {
   '736': 'Base Imbetiba',
@@ -21,6 +51,10 @@ const BASES_PROJETO = {
   '741': 'Bases: UTE, Áreas Externa e Tapera',
   '744': 'Apoio Macaé',
   'Apoio Macae': 'Base de apoio'
+};
+
+const TITULOS_PROJETO = {
+  '744': 'Apoio Macaé'
 };
 
 let registrosProjeto = [];
@@ -39,7 +73,17 @@ async function requisicaoBackendJson(url, options = {}, tentativas = 2) {
   let ultimaResposta = null;
 
   for (let i = 0; i <= tentativas; i += 1) {
-    const resposta = await fetch(url, options);
+    let resposta;
+    try {
+      resposta = await fetch(url, options);
+    } catch {
+      if (i === tentativas) {
+        throw new Error('BACKEND_UNREACHABLE');
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250 * (i + 1)));
+      continue;
+    }
+
     ultimaResposta = resposta;
 
     if (resposta.ok) {
@@ -69,7 +113,7 @@ function erroPermissaoFirestore(error) {
   return texto.includes('permission-denied') || texto.includes('missing or insufficient permissions');
 }
 
-function resolverBackendUrl() {
+function resolverBackendPreferencial() {
   const candidatos = listarBackendsCandidatos();
   return candidatos[0] || '';
 }
@@ -211,6 +255,49 @@ function normalizarTexto(valor) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+}
+
+function obterTituloProjeto(codigoProjeto) {
+  const tituloEspecial = String(TITULOS_PROJETO[codigoProjeto] || '').trim();
+  if (tituloEspecial) {
+    return tituloEspecial;
+  }
+
+  return /^\d+$/.test(codigoProjeto) ? `Projeto ${codigoProjeto}` : codigoProjeto;
+}
+
+function obterTermosProjeto(codigoProjeto) {
+  const termos = [String(codigoProjeto || '').trim()];
+
+  if (String(codigoProjeto || '').trim() === '744') {
+    termos.push('Apoio Macaé', 'Apoio Macae', 'Base de apoio');
+  }
+
+  return [...new Set(termos.filter(Boolean))];
+}
+
+function correspondeProjeto(registroProjeto, codigoProjeto) {
+  const valorRaw = String(registroProjeto || '').trim();
+  if (!valorRaw) {
+    return false;
+  }
+
+  const valorNormalizado = normalizarTexto(valorRaw);
+  const termos = obterTermosProjeto(codigoProjeto);
+
+  return termos.some((termo) => {
+    const termoRaw = String(termo || '').trim();
+    if (!termoRaw) {
+      return false;
+    }
+
+    if (/^\d+$/.test(termoRaw)) {
+      const padrao = new RegExp(`\\b${termoRaw}\\b`);
+      return padrao.test(valorRaw);
+    }
+
+    return valorNormalizado.includes(normalizarTexto(termoRaw));
+  });
 }
 
 function obterEstadoFiltrosDaUrl() {
@@ -1011,7 +1098,7 @@ async function carregarDetalhesProjeto() {
     return;
   }
 
-  const tituloProjeto = /^\d+$/.test(codigoProjeto) ? `Projeto ${codigoProjeto}` : codigoProjeto;
+  const tituloProjeto = obterTituloProjeto(codigoProjeto);
   projetoTitulo.textContent = tituloProjeto;
   projetoDescricao.textContent = BASES_PROJETO[codigoProjeto] || 'Bases relacionadas ao projeto selecionado.';
 
@@ -1021,9 +1108,8 @@ async function carregarDetalhesProjeto() {
     // Busca no Firestore e faz fallback para backend quando necessário.
     todosRegistros = await carregarEnviosComFallback();
     aplicarStatusAtendimentoLocal(todosRegistros);
-    const padraoProjeto = new RegExp(`\\b${codigoProjeto}\\b`);
 
-    registrosProjeto = todosRegistros.filter((registro) => padraoProjeto.test(String(registro?.projeto || '')));
+    registrosProjeto = todosRegistros.filter((registro) => correspondeProjeto(registro?.projeto, codigoProjeto));
     registrosProjetoFiltrados = registrosProjeto;
 
     if (!registrosProjeto.length) {

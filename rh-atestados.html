@@ -25,10 +25,10 @@
 
     <section class="card rh-list-card">
       <div class="rh-list-actions">
-        <p id="listaStatus" class="rh-list-status status-message status-message--info status-toast">Carregando...</p>
-        <p id="usuarioLogadoInfo" class="rh-list-status status-message status-message--info">Usuário: -</p>
+        <p id="listaStatus" class="rh-list-status status-message status-message--info status-toast hidden"></p>
+        <p id="usuarioLogadoInfo" class="rh-list-status status-message status-message--info hidden"></p>
         <div class="rh-list-btn-group rh-list-btn-group--fixed" aria-label="Ações do painel RH">
-          <button type="button" id="gerenciarUsuariosBtn" class="rh-admin-btn hidden" onclick="irParaAdmin()">Aprovar usuários</button>
+          <button type="button" id="gerenciarUsuariosBtn" class="rh-admin-btn" onclick="irParaAdmin()">Aprovar usuários</button>
           <button type="button" id="abrirDashboardDemandasBtn" class="rh-admin-btn" onclick="irParaDashboardDemandas()">Dashboard</button>
           <button type="button" id="sairRhBtn" class="rh-logout-btn" onclick="fazerLogout()">Sair</button>
         </div>
@@ -52,8 +52,8 @@
           <span>Bases: UTE, Áreas Externa e Tapera</span>
         </button>
         <button type="button" class="projeto-card" data-projeto="744" onclick="abrirProjetoEmNovaAba('744')">
-          <strong>Projeto 744</strong>
-          <span>Apoio Macaé</span>
+          <strong>Apoio Macaé</strong>
+          <span>Base de apoio</span>
         </button>
       </div>
 
@@ -84,6 +84,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="rh-atestados.js?v=20260309a"></script>
-  <script src="rh-dashboard.js?v=20260310n"></script>
+  <script src="rh-dashboard.js?v=20260317c"></script>
 </body>
 </html>
