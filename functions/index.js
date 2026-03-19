@@ -5,6 +5,7 @@ const logger = require("firebase-functions/logger");
 const {initializeApp, cert, applicationDefault, getApps} =
   require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
+const {getAuth} = require("firebase-admin/auth");
 const {getStorage} = require("firebase-admin/storage");
 
 setGlobalOptions({maxInstances: 10, region: "us-central1"});
@@ -524,7 +525,7 @@ async function responderApi(req, res) {
       return;
     }
 
-    if (/^\/api\/usuarios\/aprovar\//.test(pathname) && req.method === "POST") {
+    if (/^\/api\/usuarios\/rejeitar\//.test(pathname) && req.method === "POST") {
       const id = pathname.split("/").pop();
       if (!id || id.length > 50) {
         res.status(400).json({error: "ID inválido"});
@@ -539,8 +540,22 @@ async function responderApi(req, res) {
         return;
       }
 
-      await ref.set({aprovado: true, atualizado_em: new Date().toISOString()}, {merge: true});
-      res.status(200).json({id, aprovado: true, mensagem: "Usuário aprovado"});
+      // Tenta remover do Authentication se tiver UID
+      const dados = doc.data() || {};
+      if (dados.uid) {
+        try {
+          await getAuth().deleteUser(String(dados.uid));
+        } catch (e) {
+          // Se não existir no Auth, ignora
+          if (e.code !== 'auth/user-not-found') {
+            res.status(500).json({error: `Erro ao remover do Authentication: ${e.message}`});
+            return;
+          }
+        }
+      }
+
+      await ref.delete();
+      res.status(200).json({id, rejeitado: true, mensagem: "Usuário removido do Firestore e Authentication"});
       return;
     }
 

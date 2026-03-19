@@ -1679,6 +1679,10 @@ body.dialog-open {
   display: none !important;
 }
 
+.admin-dialog-overlay.hidden {
+  display: none !important;
+}
+
 .admin-dialog {
   width: min(520px, 100%);
   border: 1px solid #b9dec5;

@@ -646,12 +646,8 @@ function erroPermissaoFirestore(error) {
 }
 
 async function requisicaoBackendJson(path, options = {}, tentativas = 2) {
-  if (!BACKEND_URL) {
-    throw new Error('BACKEND_URL_NOT_CONFIGURED');
-  }
-
   let ultimaResposta = null;
-  const endpoint = `${BACKEND_URL}${path}`;
+  const endpoint = BACKEND_URL ? `${BACKEND_URL}${path}` : path;
 
   for (let i = 0; i <= tentativas; i += 1) {
     let resposta;
@@ -767,16 +763,6 @@ async function carregarUsuariosPendentes() {
 }
 
 async function aprovarUsuario(usuarioId, usuarioNome) {
-  const confirmar = await abrirDialogoAdmin({
-    titulo: 'Confirmar Aprovação',
-    mensagem: `Tem certeza que deseja aprovar ${usuarioNome}?`,
-    modo: 'confirm',
-    textoConfirmar: 'Aprovar'
-  });
-
-  if (!confirmar.confirmado) {
-    return;
-  }
   definirMensagem('⏳ Aprovando usuário...', 'loading');
   try {
     await window.firebase.firestore().collection('usuarios_rh').doc(usuarioId).update({ status: 'aprovado', aprovado: true, atualizado_em: new Date().toISOString() });

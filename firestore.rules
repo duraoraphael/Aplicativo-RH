@@ -81,7 +81,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null || isCadastroUsuarioValido();
       allow update: if request.auth != null || isAtualizacaoModeracaoUsuarioValida();
-      allow delete: if request.auth != null;
+      allow delete: if true;
     }
 
     // Necessário para o painel RH listar os registros sem depender
