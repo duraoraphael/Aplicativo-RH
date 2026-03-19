@@ -564,6 +564,77 @@ async function responderApi(req, res) {
       return;
     }
 
+    if (/^\/api\/envios\/status\//.test(pathname) && req.method === "POST") {
+      const id = pathname.split("/").pop();
+      if (!id || id.length > 100) {
+        res.status(400).json({error: "ID inválido"});
+        return;
+      }
+
+      const body = await obterBodyJson(req);
+      const atendimentoStatus = String(body?.atendimento_status || "").trim().toLowerCase();
+      if (!["feito", "pendente"].includes(atendimentoStatus)) {
+        res.status(400).json({error: "atendimento_status deve ser \"feito\" ou \"pendente\""});
+        return;
+      }
+
+      const db = await obterFirestoreObrigatorio();
+      const ref = db.collection(FIRESTORE_COLLECTIONS.envios).doc(String(id));
+      const doc = await ref.get();
+      if (!doc.exists) {
+        res.status(404).json({error: "Envio não encontrado"});
+        return;
+      }
+
+      await ref.set({
+        atendimento_status: atendimentoStatus,
+        atendimento_atualizado_em: new Date().toISOString(),
+      }, {merge: true});
+
+      res.status(200).json({id, atendimento_status: atendimentoStatus, atualizado: true});
+      return;
+    }
+
+    if (/^\/api\/envios\/excluir\//.test(pathname) && req.method === "POST") {
+      const id = pathname.split("/").pop();
+      if (!id || id.length > 100) {
+        res.status(400).json({error: "ID inválido"});
+        return;
+      }
+
+      const db = await obterFirestoreObrigatorio();
+      const ref = db.collection(FIRESTORE_COLLECTIONS.envios).doc(String(id));
+      const doc = await ref.get();
+      if (!doc.exists) {
+        res.status(404).json({error: "Envio não encontrado"});
+        return;
+      }
+
+      await ref.set({excluido: true, excluido_em: new Date().toISOString()}, {merge: true});
+      res.status(200).json({id, excluido: true});
+      return;
+    }
+
+    if (/^\/api\/envios\/restaurar\//.test(pathname) && req.method === "POST") {
+      const id = pathname.split("/").pop();
+      if (!id || id.length > 100) {
+        res.status(400).json({error: "ID inválido"});
+        return;
+      }
+
+      const db = await obterFirestoreObrigatorio();
+      const ref = db.collection(FIRESTORE_COLLECTIONS.envios).doc(String(id));
+      const doc = await ref.get();
+      if (!doc.exists) {
+        res.status(404).json({error: "Envio não encontrado"});
+        return;
+      }
+
+      await ref.update({excluido: false, excluido_em: null});
+      res.status(200).json({id, restaurado: true});
+      return;
+    }
+
     res.status(404).json({error: "Rota não encontrada"});
   } catch (error) {
     logger.error("Erro na API", error);

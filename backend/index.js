@@ -221,7 +221,20 @@ async function excluirEnvioFirestore(id) {
     return false;
   }
 
-  await ref.delete();
+  await ref.set({ excluido: true, excluido_em: new Date().toISOString() }, { merge: true });
+  return true;
+}
+
+async function restaurarEnvioFirestore(id) {
+  const db = await obterFirestoreObrigatorio();
+  const ref = db.collection(FIRESTORE_COLLECTIONS.envios).doc(String(id));
+  const doc = await ref.get();
+
+  if (!doc.exists) {
+    return false;
+  }
+
+  await ref.update({ excluido: false, excluido_em: null });
   return true;
 }
 
@@ -901,6 +914,36 @@ const server = http.createServer(async (req, res) => {
 
       res.writeHead(200);
       res.end(JSON.stringify({ id, excluido: true }));
+      return;
+    }
+
+    // Restaurar envio excluído
+    if (pathname.match(/^\/api\/envios\/restaurar\//) && req.method === 'POST') {
+      const id = pathname.split('/').pop();
+
+      if (!id || id.length > 100) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'ID inválido' }));
+        return;
+      }
+
+      let restaurado = false;
+      try {
+        restaurado = await restaurarEnvioFirestore(id);
+      } catch (firestoreError) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao restaurar envio (${firestoreError.message})` }));
+        return;
+      }
+
+      if (!restaurado) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Envio não encontrado' }));
+        return;
+      }
+
+      res.writeHead(200);
+      res.end(JSON.stringify({ id, restaurado: true }));
       return;
     }
 

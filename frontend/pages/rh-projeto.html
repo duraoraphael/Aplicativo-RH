@@ -55,6 +55,7 @@
         <div class="detalhes-status-toggle" role="group" aria-label="Filtrar por status de atendimento">
           <button id="filtroPendentesBtn" type="button" class="detalhes-status-btn is-active" aria-pressed="true">Pendentes</button>
           <button id="filtroFeitosBtn" type="button" class="detalhes-status-btn" aria-pressed="false">Feitos</button>
+          <button id="filtroExcluidosBtn" type="button" class="detalhes-status-btn detalhes-status-btn--lixeira" aria-pressed="false">&#128465; Excluídos</button>
         </div>
         <button id="baixarFiltradosBtn" type="button" class="detalhes-download-massa-btn" disabled>Exportação em massa</button>
       </div>
@@ -64,6 +65,17 @@
       <div id="detalhesContainer" class="detalhes-grid"></div>
     </section>
   </main>
+
+  <div id="modalExclusao" class="admin-dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="modalExclusaoTitulo" hidden>
+    <div class="admin-dialog">
+      <h2 id="modalExclusaoTitulo" class="admin-dialog-title">&#128465;&#65039; Excluir atestado</h2>
+      <p class="admin-dialog-message">Tem certeza que deseja excluir este atestado?<br>O atestado será movido para <strong>Excluídos</strong> e pode ser restaurado depois.</p>
+      <div class="admin-dialog-actions">
+        <button id="modalExclusaoCancelar" type="button" class="btn-cancelar">Cancelar</button>
+        <button id="modalExclusaoConfirmar" type="button" class="btn-rejeitar">Sim, excluir</button>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>

@@ -10,6 +10,7 @@ const filtroDataFimInput = document.getElementById('filtroDataFim');
 const filtroTipoSelect = document.getElementById('filtroTipoAtestado');
 const filtroPendentesBtn = document.getElementById('filtroPendentesBtn');
 const filtroFeitosBtn = document.getElementById('filtroFeitosBtn');
+const filtroExcluidosBtn = document.getElementById('filtroExcluidosBtn');
 const baixarFiltradosBtn = document.getElementById('baixarFiltradosBtn');
 const voltarPainelRhProjetoBtn = document.getElementById('voltarPainelRhProjetoBtn');
 const DEFAULT_REMOTE_BACKEND_URL = '';
@@ -62,6 +63,7 @@ let registrosProjetoFiltrados = [];
 let downloadMassaEmAndamento = false;
 const atendimentosEmAtualizacao = new Set();
 let excluindoAtestado = false;
+let restaurandoAtestado = false;
 let detalhesStatusTimer = null;
 let codigoProjetoAtual = '';
 let todosRegistros = [];
@@ -351,7 +353,7 @@ function atualizarUrlEstadoDetalhes() {
     params.delete('tipo');
   }
 
-  if (filtroAtendimentoAtual === 'feito' || filtroAtendimentoAtual === 'pendente') {
+  if (filtroAtendimentoAtual === 'feito' || filtroAtendimentoAtual === 'pendente' || filtroAtendimentoAtual === 'excluido') {
     params.set('atendimento', filtroAtendimentoAtual);
   } else {
     params.delete('atendimento');
@@ -381,7 +383,7 @@ function restaurarEstadoFiltrosDaUrl() {
     }
   }
 
-  if (estado.atendimento === 'feito' || estado.atendimento === 'pendente') {
+  if (estado.atendimento === 'feito' || estado.atendimento === 'pendente' || estado.atendimento === 'excluido') {
     filtroAtendimentoAtual = estado.atendimento;
   }
 
@@ -400,10 +402,19 @@ function atualizarBotoesFiltroAtendimento() {
     filtroFeitosBtn.classList.toggle('is-active', ativo);
     filtroFeitosBtn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
   }
+
+  if (filtroExcluidosBtn) {
+    const ativo = filtroAtendimentoAtual === 'excluido';
+    filtroExcluidosBtn.classList.toggle('is-active', ativo);
+    filtroExcluidosBtn.classList.toggle('is-active--lixeira', ativo);
+    filtroExcluidosBtn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+    const totalExcluidos = registrosProjeto.filter((r) => r?.excluido === true).length;
+    filtroExcluidosBtn.textContent = totalExcluidos > 0 ? `🗑️ Excluídos (${totalExcluidos})` : '🗑️ Excluídos';
+  }
 }
 
 function definirFiltroAtendimento(status) {
-  const normalizado = status === 'feito' ? 'feito' : 'pendente';
+  const normalizado = status === 'feito' ? 'feito' : (status === 'excluido' ? 'excluido' : 'pendente');
   if (filtroAtendimentoAtual === normalizado) {
     return;
   }
@@ -623,8 +634,15 @@ async function migrarStatusAtendimentoLegado(registros) {
 
 function criarCardRegistro(record) {
   const card = document.createElement('article');
+  const isExcluido = record?.excluido === true;
   const statusAtendimento = obterStatusAtendimento(record);
-  card.className = `detalhe-card ${statusAtendimento === 'feito' ? 'detalhe-card--feito' : ''}`;
+  const classesCard = ['detalhe-card'];
+  if (isExcluido) {
+    classesCard.push('detalhe-card--excluido');
+  } else if (statusAtendimento === 'feito') {
+    classesCard.push('detalhe-card--feito');
+  }
+  card.className = classesCard.join(' ');
   card.dataset.registroId = String(record?.id || '');
 
   const arquivos = Array.isArray(record.arquivos)
@@ -643,13 +661,21 @@ function criarCardRegistro(record) {
       .join('<br>')
     : '-';
 
+  const statusHtml = isExcluido
+    ? `<span class="detalhe-status detalhe-status--excluido">Excluído</span>`
+    : `<span class="detalhe-status ${classeStatusAtendimento(statusAtendimento)}">${rotuloStatusAtendimento(statusAtendimento)}</span>`;
+
+  const botoesHtml = isExcluido
+    ? `<button type="button" class="detalhe-restaurar-btn" data-action="restore-registro">↩️ Restaurar</button>`
+    : `<button type="button" class="detalhe-marcar-btn" data-action="toggle-feito">${statusAtendimento === 'feito' ? 'Desmarcar' : 'Marcar como feito'}</button>
+        <button type="button" class="detalhe-excluir-btn detalhe-excluir-btn--icon" data-action="delete-registro" aria-label="Excluir atestado" title="Excluir atestado"><span aria-hidden="true">&#128465;</span></button>`;
+
   card.innerHTML = `
     <h3>${record.nome || 'Sem nome informado'}</h3>
     <div class="detalhe-top-actions">
-      <span class="detalhe-status ${classeStatusAtendimento(statusAtendimento)}">${rotuloStatusAtendimento(statusAtendimento)}</span>
+      ${statusHtml}
       <div class="detalhe-top-actions-buttons">
-        <button type="button" class="detalhe-marcar-btn" data-action="toggle-feito">${statusAtendimento === 'feito' ? 'Desmarcar' : 'Marcar como feito'}</button>
-        <button type="button" class="detalhe-excluir-btn detalhe-excluir-btn--icon" data-action="delete-registro" aria-label="Excluir atestado" title="Excluir atestado"><span aria-hidden="true">&#128465;</span></button>
+        ${botoesHtml}
       </div>
     </div>
     <div class="detalhe-grid">
@@ -661,6 +687,7 @@ function criarCardRegistro(record) {
       ${criarDetalheItem('Data fim', formatarData(record.data_fim))}
       ${criarDetalheItem('Dias', record.dias)}
       ${criarDetalheItem('Enviado em', formatarDataHora(record.criado_em))}
+      ${isExcluido ? criarDetalheItem('Excluído em', formatarDataHora(record.excluido_em)) : ''}
     </div>
     <div class="detalhe-arquivos">
       <span>Arquivo(s)</span>
@@ -702,6 +729,34 @@ function removerRegistroLocal(registroId) {
   registrosProjetoFiltrados = registrosProjetoFiltrados.filter((item) => String(item?.id || '') !== id);
 }
 
+function marcarRegistroComoExcluidoLocal(registroId) {
+  const id = String(registroId || '');
+  const atualizar = (lista) => {
+    const idx = lista.findIndex((item) => String(item?.id || '') === id);
+    if (idx >= 0) {
+      lista[idx].excluido = true;
+      lista[idx].excluido_em = new Date().toISOString();
+    }
+  };
+  atualizar(todosRegistros);
+  atualizar(registrosProjeto);
+  registrosProjetoFiltrados = registrosProjetoFiltrados.filter((item) => String(item?.id || '') !== id);
+}
+
+function marcarRegistroComoRestauradoLocal(registroId) {
+  const id = String(registroId || '');
+  const atualizar = (lista) => {
+    const idx = lista.findIndex((item) => String(item?.id || '') === id);
+    if (idx >= 0) {
+      lista[idx].excluido = false;
+      lista[idx].excluido_em = null;
+    }
+  };
+  atualizar(todosRegistros);
+  atualizar(registrosProjeto);
+  registrosProjetoFiltrados = registrosProjetoFiltrados.filter((item) => String(item?.id || '') !== id);
+}
+
 async function excluirRegistroNoBackend(registroId) {
   const candidatos = listarBackendsCandidatos();
   if (!candidatos.length) {
@@ -728,12 +783,111 @@ async function excluirRegistroNoBackend(registroId) {
 }
 
 async function excluirRegistroNoFirestore(registroId) {
-  await window.firebase.firestore().collection('envios_atestados').doc(String(registroId)).delete();
+  await window.firebase.firestore().collection('envios_atestados').doc(String(registroId)).set({
+    excluido: true,
+    excluido_em: new Date().toISOString()
+  }, { merge: true });
+}
+
+async function restaurarRegistroNoBackend(registroId) {
+  const candidatos = listarBackendsCandidatos();
+  if (!candidatos.length) {
+    throw new Error('BACKEND_NOT_AVAILABLE');
+  }
+
+  for (const backendBase of candidatos) {
+    try {
+      await requisicaoBackendJson(`${backendBase}/api/envios/restaurar/${encodeURIComponent(registroId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return;
+    } catch (erro) {
+      const msg = String(erro?.message || '');
+      if (msg.startsWith('404')) {
+        throw new Error('BACKEND_RESTORE_ROUTE_NOT_FOUND');
+      }
+    }
+  }
+
+  throw new Error('BACKEND_RESTORE_FAILED');
+}
+
+async function restaurarRegistroNoFirestore(registroId) {
+  await window.firebase.firestore().collection('envios_atestados').doc(String(registroId)).update({
+    excluido: false,
+    excluido_em: null
+  });
+}
+
+async function restaurarAtestado(registroId) {
+  if (!registroId || restaurandoAtestado) return;
+
+  restaurandoAtestado = true;
+
+  // Atualização otimista: UI responde imediatamente.
+  marcarRegistroComoRestauradoLocal(registroId);
+  atualizarBotoesFiltroAtendimento();
+  aplicarFiltros();
+  setDetalhesStatus('Atestado restaurado com sucesso.', 'success');
+
+  try {
+    try {
+      await restaurarRegistroNoBackend(registroId);
+    } catch {
+      await restaurarRegistroNoFirestore(registroId);
+    }
+  } catch (error) {
+    // Rollback em caso de falha na persistência.
+    marcarRegistroComoExcluidoLocal(registroId);
+    atualizarBotoesFiltroAtendimento();
+    aplicarFiltros();
+    setDetalhesStatus(`Não foi possível restaurar o atestado: ${error?.message || 'falha desconhecida'}`, 'error');
+  } finally {
+    restaurandoAtestado = false;
+  }
+}
+
+function abrirModalConfirmacaoExclusao() {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('modalExclusao');
+    const btnConfirmar = document.getElementById('modalExclusaoConfirmar');
+    const btnCancelar = document.getElementById('modalExclusaoCancelar');
+
+    if (!modal || !btnConfirmar || !btnCancelar) {
+      resolve(window.confirm('Confirma a exclusão deste atestado? Esta ação não pode ser desfeita.'));
+      return;
+    }
+
+    document.body.classList.add('dialog-open');
+    modal.hidden = false;
+    btnConfirmar.focus();
+
+    function fechar(resultado) {
+      modal.hidden = true;
+      document.body.classList.remove('dialog-open');
+      btnConfirmar.removeEventListener('click', onConfirmar);
+      btnCancelar.removeEventListener('click', onCancelar);
+      modal.removeEventListener('click', onOverlayClick);
+      document.removeEventListener('keydown', onEsc);
+      resolve(resultado);
+    }
+
+    function onConfirmar() { fechar(true); }
+    function onCancelar() { fechar(false); }
+    function onOverlayClick(e) { if (e.target === modal) fechar(false); }
+    function onEsc(e) { if (e.key === 'Escape') fechar(false); }
+
+    btnConfirmar.addEventListener('click', onConfirmar);
+    btnCancelar.addEventListener('click', onCancelar);
+    modal.addEventListener('click', onOverlayClick);
+    document.addEventListener('keydown', onEsc);
+  });
 }
 
 async function excluirAtestado(registroId) {
   if (!registroId) {
-    setDetalhesStatus('Nao foi possivel excluir: registro sem identificacao.', 'error');
+    setDetalhesStatus('Não foi possível excluir: registro sem identificação.', 'error');
     return;
   }
 
@@ -741,13 +895,18 @@ async function excluirAtestado(registroId) {
     return;
   }
 
-  const confirmar = window.confirm('Confirma a exclusao deste atestado? Esta acao nao pode ser desfeita.');
+  const confirmar = await abrirModalConfirmacaoExclusao();
   if (!confirmar) {
     return;
   }
 
   excluindoAtestado = true;
-  setDetalhesStatus('Excluindo atestado...', 'info');
+
+  // Atualização otimista: UI responde imediatamente.
+  marcarRegistroComoExcluidoLocal(registroId);
+  atualizarBotoesFiltroAtendimento();
+  aplicarFiltros();
+  setDetalhesStatus('Atestado movido para Excluídos. Acesse a aba para restaurar.', 'success');
 
   try {
     try {
@@ -755,12 +914,12 @@ async function excluirAtestado(registroId) {
     } catch {
       await excluirRegistroNoFirestore(registroId);
     }
-
-    removerRegistroLocal(registroId);
-    aplicarFiltros();
-    setDetalhesStatus('Atestado excluido com sucesso.', 'success');
   } catch (error) {
-    setDetalhesStatus(`Nao foi possivel excluir o atestado: ${error?.message || 'falha desconhecida'}`, 'error');
+    // Rollback em caso de falha na persistência.
+    marcarRegistroComoRestauradoLocal(registroId);
+    atualizarBotoesFiltroAtendimento();
+    aplicarFiltros();
+    setDetalhesStatus(`Não foi possível excluir o atestado: ${error?.message || 'falha desconhecida'}`, 'error');
   } finally {
     excluindoAtestado = false;
   }
@@ -852,6 +1011,15 @@ function ativarAcoesAtendimentoNosCards() {
       const card = botaoExcluir.closest('.detalhe-card');
       const registroId = String(card?.dataset?.registroId || '').trim();
       await excluirAtestado(registroId);
+      return;
+    }
+
+    const botaoRestaurar = event.target.closest('button.detalhe-restaurar-btn[data-action="restore-registro"]');
+    if (botaoRestaurar) {
+      event.preventDefault();
+      const card = botaoRestaurar.closest('.detalhe-card');
+      const registroId = String(card?.dataset?.registroId || '').trim();
+      await restaurarAtestado(registroId);
       return;
     }
 
@@ -1074,7 +1242,7 @@ function aplicarFiltroTipoInicialDaUrl() {
   }
 }
 
-function filtrarRegistrosSemAtendimento() {
+function filtrarPorCamposTexto(lista) {
   const nomeFiltro = normalizarTexto(filtroNomeInput.value);
   const dataInicioFiltro = filtroDataInicioInput.value;
   const dataFimFiltro = filtroDataFimInput.value;
@@ -1082,7 +1250,7 @@ function filtrarRegistrosSemAtendimento() {
   const dataMaxFiltro = dataInicioFiltro && dataFimFiltro && dataInicioFiltro > dataFimFiltro ? dataInicioFiltro : dataFimFiltro;
   const tipoFiltro = filtroTipoSelect.value;
 
-  return registrosProjeto.filter((registro) => {
+  return lista.filter((registro) => {
     const nomeRegistro = normalizarTexto(registro?.nome);
     const dataRegistro = obterDataISO(registro?.criado_em);
     const tipoRegistro = String(registro?.tipo_atestado || '');
@@ -1096,9 +1264,18 @@ function filtrarRegistrosSemAtendimento() {
   });
 }
 
+function filtrarRegistrosSemAtendimento() {
+  return filtrarPorCamposTexto(registrosProjeto.filter((r) => !r?.excluido));
+}
+
+function filtrarRegistrosExcluidos() {
+  return filtrarPorCamposTexto(registrosProjeto.filter((r) => r?.excluido === true));
+}
+
 function selecionarFiltroAtendimentoComResultados() {
-  const pendentes = registrosProjeto.filter((registro) => obterStatusAtendimento(registro) === 'pendente').length;
-  const feitos = registrosProjeto.filter((registro) => obterStatusAtendimento(registro) === 'feito').length;
+  const ativos = registrosProjeto.filter((r) => !r?.excluido);
+  const pendentes = ativos.filter((registro) => obterStatusAtendimento(registro) === 'pendente').length;
+  const feitos = ativos.filter((registro) => obterStatusAtendimento(registro) === 'feito').length;
 
   if (filtroAtendimentoAtual === 'pendente' && pendentes === 0 && feitos > 0) {
     filtroAtendimentoAtual = 'feito';
@@ -1110,19 +1287,33 @@ function selecionarFiltroAtendimentoComResultados() {
 }
 
 function aplicarFiltros() {
+  detalhesContainer.innerHTML = '';
+
+  if (filtroAtendimentoAtual === 'excluido') {
+    const excluidos = filtrarRegistrosExcluidos();
+    registrosProjetoFiltrados = excluidos;
+    atualizarBotaoDownloadEmMassa();
+    if (!excluidos.length) {
+      setDetalhesStatus('Nenhum atestado na lixeira.', 'info');
+      atualizarUrlEstadoDetalhes();
+      return;
+    }
+    excluidos.forEach((registro) => detalhesContainer.appendChild(criarCardRegistro(registro)));
+    setDetalhesStatus(`${excluidos.length} atestado(s) na lixeira.`, 'info');
+    atualizarUrlEstadoDetalhes();
+    return;
+  }
+
   const baseFiltrada = filtrarRegistrosSemAtendimento();
   const atendimentoFiltro = filtroAtendimentoAtual;
 
   const filtrados = baseFiltrada.filter((registro) => {
     const statusAtendimento = obterStatusAtendimento(registro);
-    const correspondeAtendimento = statusAtendimento === atendimentoFiltro;
-
-    return correspondeAtendimento;
+    return statusAtendimento === atendimentoFiltro;
   });
 
   registrosProjetoFiltrados = filtrados;
   atualizarBotaoDownloadEmMassa();
-  detalhesContainer.innerHTML = '';
 
   if (!filtrados.length) {
     setDetalhesStatus('Nenhum registro encontrado com os filtros aplicados.', 'info');
@@ -1131,7 +1322,8 @@ function aplicarFiltros() {
   }
 
   filtrados.forEach((registro) => detalhesContainer.appendChild(criarCardRegistro(registro)));
-  setDetalhesStatus(`Mostrando ${filtrados.length} de ${registrosProjeto.length} registro(s).`, 'success');
+  const totalAtivos = registrosProjeto.filter((r) => !r?.excluido).length;
+  setDetalhesStatus(`Mostrando ${filtrados.length} de ${totalAtivos} registro(s).`, 'success');
   atualizarUrlEstadoDetalhes();
 }
 
@@ -1145,6 +1337,9 @@ function configurarEventosFiltros() {
   }
   if (filtroFeitosBtn) {
     filtroFeitosBtn.addEventListener('click', () => definirFiltroAtendimento('feito'));
+  }
+  if (filtroExcluidosBtn) {
+    filtroExcluidosBtn.addEventListener('click', () => definirFiltroAtendimento('excluido'));
   }
   if (baixarFiltradosBtn) {
     baixarFiltradosBtn.addEventListener('click', baixarPdfsFiltrados);
@@ -1196,7 +1391,7 @@ async function carregarDetalhesProjeto() {
       return;
     }
 
-    preencherFiltroTipo(registrosProjeto);
+    preencherFiltroTipo(registrosProjeto.filter((r) => !r?.excluido));
     aplicarFiltroTipoInicialDaUrl();
     restaurarEstadoFiltrosDaUrl();
     selecionarFiltroAtendimentoComResultados();
