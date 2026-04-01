@@ -2,25 +2,17 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Envio realizado</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Redirecionando...</title>
+  <script>
+    (function () {
+      var target = '/frontend/pages/sucesso.html';
+      var next = target + (window.location.search || '') + (window.location.hash || '');
+      window.location.replace(next);
+    })();
+  </script>
+
 </head>
 <body>
-  <header class="top-header">
-    <div class="container header-content">
-      <img src="assets/logo-normatel.png" alt="Normatel Engenharia" class="logo-normatel" />
-    </div>
-  </header>
-
-  <main class="container success-wrapper">
-    <section class="card success-card" aria-live="polite">
-      <div class="success-icon" aria-hidden="true">✓</div>
-      <h1>Enviado com sucesso</h1>
-      <p class="page-subtitle">Seu formulário foi recebido pelo RH.</p>
-      <a href="index.html" class="success-link">Fazer novo envio</a>
-    </section>
-  </main>
+  <p>Redirecionando para <a href="/frontend/pages/sucesso.html">/frontend/pages/sucesso.html</a>...</p>
 </body>
 </html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%235fbe4a'/%3E%3Cpath d='M14 34h36v8H14zM14 22h36v8H14z' fill='white'/%3E%3C/svg%3E" />
+  <title>Envio de atestado</title>
+  <link rel="stylesheet" href="../styles/styles.css" />
+</head>
+<body>
+  <header class="top-header">
+    <div class="container header-content">
+      <img src="../assets/logo-normatel.png" alt="Normatel Engenharia" class="logo-normatel" />
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <section class="page-head">
+      <h1>Envio de atestado</h1>
+      <p class="page-subtitle">Preencha os dados abaixo para encaminhar o atestado ao RH.</p>
+    </section>
+
+    <section class="auth-access">
+      <button type="button" id="rhAccessBtn" class="rh-access-btn">RH</button>
+    </section>
+
+    <section id="projectGateCard" class="card project-gate-card">
+      <h2>Selecione o Projeto</h2>
+      <p class="page-subtitle">Escolha o projeto para liberar o formulario. Depois de escolhido, o campo Projeto ficara bloqueado.</p>
+      <label class="project-filter-wrap" for="gateProjetoFiltro">
+        Buscar projeto
+        <input type="text" id="gateProjetoFiltro" placeholder="Digite numero ou nome da base" autocomplete="off" />
+      </label>
+      <p id="gateProjetoFiltroInfo" class="project-filter-info">Mostrando todos os projetos.</p>
+      <div class="projetos-cards project-gate-cards" aria-label="Selecionar projeto">
+        <button type="button" class="projeto-card gate-projeto-card" data-projeto="Projeto 736 - Base Imbetiba" onclick="window.__gateFallbackSelectProjeto && window.__gateFallbackSelectProjeto(this.dataset.projeto)">
+          <strong>Projeto 736</strong>
+          <span>Base Imbetiba</span>
+        </button>
+        <button type="button" class="projeto-card gate-projeto-card" data-projeto="Projeto 737 - Base Imboassica" onclick="window.__gateFallbackSelectProjeto && window.__gateFallbackSelectProjeto(this.dataset.projeto)">
+          <strong>Projeto 737</strong>
+          <span>Base Imboassica</span>
+        </button>
+        <button type="button" class="projeto-card gate-projeto-card" data-projeto="Projeto 743 - Base Cabiunas" onclick="window.__gateFallbackSelectProjeto && window.__gateFallbackSelectProjeto(this.dataset.projeto)">
+          <strong>Projeto 743</strong>
+          <span>Base Cabiunas</span>
+        </button>
+        <button type="button" class="projeto-card gate-projeto-card" data-projeto="Projeto 743 - Severina" onclick="window.__gateFallbackSelectProjeto && window.__gateFallbackSelectProjeto(this.dataset.projeto)">
+          <strong>Projeto 743</strong>
+          <span>Severina</span>
+        </button>
+        <button type="button" class="projeto-card gate-projeto-card" data-projeto="Projeto 743 - Barra do Furado" onclick="window.__gateFallbackSelectProjeto && window.__gateFallbackSelectProjeto(this.dataset.projeto)">
+          <strong>Projeto 743</strong>
+          <span>Barra do Furado</span>
+        </button>
+        <button type="button" class="projeto-card gate-projeto-card" data-projeto="Projeto 741 - Base UTE" onclick="window.__gateFallbackSelectProjeto && window.__gateFallbackSelectProjeto(this.dataset.projeto)">
+          <strong>Projeto 741</strong>
+          <span>Base UTE</span>
+        </button>
+        <button type="button" class="projeto-card gate-projeto-card" data-projeto="Projeto 741 - Base Áreas Externa" onclick="window.__gateFallbackSelectProjeto && window.__gateFallbackSelectProjeto(this.dataset.projeto)">
+          <strong>Projeto 741</strong>
+          <span>Base Áreas Externa</span>
+        </button>
+        <button type="button" class="projeto-card gate-projeto-card" data-projeto="Projeto 741 - Base Tapera" onclick="window.__gateFallbackSelectProjeto && window.__gateFallbackSelectProjeto(this.dataset.projeto)">
+          <strong>Projeto 741</strong>
+          <span>Base Tapera</span>
+        </button>
+        <button type="button" class="projeto-card gate-projeto-card" data-projeto="Apoio Macae" onclick="window.__gateFallbackSelectProjeto && window.__gateFallbackSelectProjeto(this.dataset.projeto)">
+          <strong>Apoio Macae</strong>
+          <span>Base de apoio</span>
+        </button>
+      </div>
+      <button type="button" id="gateContinuarBtn" class="gate-continuar-btn" disabled>Continuar</button>
+
+      <select id="gateProjeto" class="hidden" aria-hidden="true" tabindex="-1">
+        <option value="">Selecione um projeto</option>
+        <option value="Projeto 736 - Base Imbetiba">Projeto 736 - Base Imbetiba</option>
+        <option value="Projeto 737 - Base Imboassica">Projeto 737 - Base Imboassica</option>
+        <option value="Projeto 743 - Base Cabiunas">Projeto 743 - Base Cabiunas</option>
+        <option value="Projeto 743 - Severina">Projeto 743 - Severina</option>
+        <option value="Projeto 743 - Barra do Furado">Projeto 743 - Barra do Furado</option>
+        <option value="Projeto 741 - Base UTE">Projeto 741 - Base UTE</option>
+        <option value="Projeto 741 - Base Áreas Externa">Projeto 741 - Base Áreas Externa</option>
+        <option value="Projeto 741 - Base Tapera">Projeto 741 - Base Tapera</option>
+        <option value="Apoio Macae">Apoio Macae</option>
+      </select>
+      <p id="projectGateInfo" class="status-message status-message--info status-toast">Selecione o projeto para continuar.</p>
+    </section>
+
+    <form id="rh-form" class="card hidden" novalidate>
+      <div class="grid">
+        <label>
+          Nome
+          <input type="text" id="nome" name="nome" required />
+        </label>
+
+        <label>
+          Função
+          <input type="text" id="funcao" name="funcao" required />
+        </label>
+
+        <label>
+          Projeto
+          <select id="projeto" name="projeto" required>
+            <option value="">Selecione um projeto</option>
+            <option value="Projeto 736 - Base Imbetiba">Projeto 736 - Base Imbetiba</option>
+            <option value="Projeto 737 - Base Imboassica">Projeto 737 - Base Imboassica</option>
+            <option value="Projeto 743 - Base Cabiunas">Projeto 743 - Base Cabiunas</option>
+            <option value="Projeto 743 - Severina">Projeto 743 - Severina</option>
+            <option value="Projeto 743 - Barra do Furado">Projeto 743 - Barra do Furado</option>
+            <option value="Projeto 741 - Base UTE">Projeto 741 - Base UTE</option>
+            <option value="Projeto 741 - Base Áreas Externa">Projeto 741 - Base Áreas Externa</option>
+            <option value="Projeto 741 - Base Tapera">Projeto 741 - Base Tapera</option>
+            <option value="Apoio Macae">Apoio Macae</option>
+          </select>
+        </label>
+
+        <label>
+          Tipo de atestado
+          <select id="tipoAtestado" name="tipoAtestado" required>
+            <option value="">Selecione um tipo</option>
+            <option value="Odontológico">Odontológico</option>
+            <option value="Licença maternidade">Licença maternidade</option>
+            <option value="Atestado médico">Atestado médico</option>
+            <option value="Declaração">Declaração</option>
+          </select>
+        </label>
+
+        <label id="horasComparecimentoWrapper" class="hidden">
+          Horas de comparecimento
+          <input type="number" id="horasComparecimento" name="horasComparecimento" min="1" step="1" />
+        </label>
+
+        <label>
+          Data de início
+          <input type="text" id="dataInicio" name="dataInicio" inputmode="numeric" placeholder="DD/MM/AAAA" pattern="^\d{2}/\d{2}/\d{4}$" maxlength="10" required />
+        </label>
+
+        <label>
+          Data de fim
+          <input type="text" id="dataFim" name="dataFim" inputmode="numeric" placeholder="DD/MM/AAAA" pattern="^\d{2}/\d{2}/\d{4}$" maxlength="10" readonly required />
+        </label>
+
+        <label id="diasWrapper">
+          Dias
+          <input type="number" id="dias" name="dias" min="1" step="1" required />
+        </label>
+
+        <label class="full-width file-upload-group">
+          Enviar arquivo(s)
+          <input type="file" id="arquivos" name="arquivos" class="file-upload-control" multiple required />
+          <small class="upload-help">Anexe um ou mais arquivos (PDF, imagem ou documento).</small>
+        </label>
+      </div>
+
+      <button type="submit">Enviar</button>
+      <p id="mensagem" class="status-message status-message--info status-toast" role="status" aria-live="polite"></p>
+      <div id="uploadProgressWrapper" class="hidden upload-progress-wrapper" aria-live="polite">
+        <small id="uploadProgressLabel" class="upload-progress-label">Carregando</small>
+        <progress id="uploadProgressBar" max="100" value="0"></progress>
+        <small id="uploadProgressText" class="upload-progress-text">0%</small>
+      </div>
+    </form>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- Firebase CDN compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script>
+    (function () {
+      function normalizarProjeto(valor) {
+        return String(valor || '').trim();
+      }
+
+      window.__gateFallbackSelectProjeto = function (valorProjeto) {
+        var valor = normalizarProjeto(valorProjeto);
+        if (!valor) return;
+        localStorage.setItem('rh_projeto_preselecionado', valor);
+        window.location.href = 'formulario.html?projeto=' + encodeURIComponent(valor);
+      };
+    })();
+  </script>
+  <script src="../scripts/firebase-config.js?v=20260226b"></script>
+  <script src="../scripts/script.js?v=20260309v"></script>
+</body>
+</html>
+

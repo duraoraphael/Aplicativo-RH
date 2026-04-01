@@ -8,9 +8,9 @@
     "dev": "node index.js"
   },
   "dependencies": {
-    "firebase-admin": "^13.0.1"
+    "firebase-admin": "^13.7.0",
+    "firebase-functions": "^7.2.0"
   },
-  "devDependencies": {},
   "description": "Backend RH - Node.js nativo. Versão simplificada para desenvolvimento.",
   "keywords": [],
   "author": "",

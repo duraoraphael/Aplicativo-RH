@@ -2,117 +2,17 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <title>Formulario de envio de atestado</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Redirecionando...</title>
+  <script>
+    (function () {
+      var target = '/frontend/pages/formulario.html';
+      var next = target + (window.location.search || '') + (window.location.hash || '');
+      window.location.replace(next);
+    })();
+  </script>
+
 </head>
 <body>
-  <header class="top-header">
-    <div class="container header-content">
-      <img src="assets/logo-normatel.png" alt="Normatel Engenharia" class="logo-normatel" />
-    </div>
-  </header>
-
-  <main class="container main-content">
-    <section class="page-head">
-      <h1>Formulario de envio</h1>
-      <p class="page-subtitle">Preencha os dados abaixo para encaminhar o atestado ao RH.</p>
-    </section>
-
-    <section class="form-top-actions card">
-      <div>
-        <p class="form-top-actions-label">Navegação</p>
-        <p class="form-top-actions-text">Se quiser escolher outro projeto, volte para a tela de seleção.</p>
-      </div>
-      <a id="formBackToIndexBtn" href="index.html" class="form-back-btn" aria-label="Voltar para seleção de projeto">Voltar para seleção</a>
-    </section>
-
-    <form id="rh-form" class="card" novalidate>
-      <div class="grid">
-        <label>
-          Nome
-          <input type="text" id="nome" name="nome" required />
-        </label>
-
-        <label>
-          Função
-          <input type="text" id="funcao" name="funcao" required />
-        </label>
-
-        <label>
-          Projeto
-          <select id="projeto" name="projeto" required>
-            <option value="">Selecione um projeto</option>
-            <option value="Projeto 736 - Base Imbetiba">Projeto 736 - Base Imbetiba</option>
-            <option value="Projeto 737 - Base Imboassica">Projeto 737 - Base Imboassica</option>
-            <option value="Projeto 743 - Base Cabiunas">Projeto 743 - Base Cabiunas</option>
-            <option value="Projeto 743 - Severina">Projeto 743 - Severina</option>
-            <option value="Projeto 743 - Barra do Furado">Projeto 743 - Barra do Furado</option>
-            <option value="Projeto 741 - Base UTE">Projeto 741 - Base UTE</option>
-            <option value="Projeto 741 - Base Áreas Externa">Projeto 741 - Base Áreas Externa</option>
-            <option value="Projeto 741 - Base Tapera">Projeto 741 - Base Tapera</option>
-            <option value="Apoio Macae">Apoio Macae</option>
-          </select>
-        </label>
-
-        <label>
-          Tipo de atestado
-          <select id="tipoAtestado" name="tipoAtestado" required>
-            <option value="">Selecione um tipo</option>
-            <option value="Odontológico">Odontológico</option>
-            <option value="Licença maternidade">Licença maternidade</option>
-            <option value="Atestado médico">Atestado médico</option>
-            <option value="Declaração">Declaração</option>
-          </select>
-        </label>
-
-        <label id="horasComparecimentoWrapper" class="hidden">
-          Horas de comparecimento
-          <input type="number" id="horasComparecimento" name="horasComparecimento" min="1" step="1" />
-        </label>
-
-        <label>
-          Data de início
-          <input type="text" id="dataInicio" name="dataInicio" inputmode="numeric" placeholder="DD/MM/AAAA" pattern="^\d{2}/\d{2}/\d{4}$" maxlength="10" required />
-        </label>
-
-        <label>
-          Data de fim
-          <input type="text" id="dataFim" name="dataFim" inputmode="numeric" placeholder="DD/MM/AAAA" pattern="^\d{2}/\d{2}/\d{4}$" maxlength="10" readonly required />
-        </label>
-
-        <label id="diasWrapper">
-          Dias
-          <input type="number" id="dias" name="dias" min="1" step="1" required />
-        </label>
-
-        <label class="full-width file-upload-group">
-          Enviar arquivo(s)
-          <input type="file" id="arquivos" name="arquivos" class="file-upload-control" multiple required />
-          <small class="upload-help">Anexe um ou mais arquivos (PDF, imagem ou documento).</small>
-        </label>
-      </div>
-
-      <button type="submit">Enviar</button>
-      <p id="mensagem" class="status-message status-message--info status-toast" role="status" aria-live="polite"></p>
-      <div id="uploadProgressWrapper" class="hidden upload-progress-wrapper" aria-live="polite">
-        <small id="uploadProgressLabel" class="upload-progress-label">Carregando</small>
-        <progress id="uploadProgressBar" max="100" value="0"></progress>
-        <small id="uploadProgressText" class="upload-progress-text">0%</small>
-      </div>
-    </form>
-  </main>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-  <script src="firebase-config.js?v=20260226b"></script>
-  <script src="script.js?v=20260309v"></script>
+  <p>Redirecionando para <a href="/frontend/pages/formulario.html">/frontend/pages/formulario.html</a>...</p>
 </body>
 </html>

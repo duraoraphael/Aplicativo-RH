@@ -1,7 +1,7 @@
 {
   "name": "aplicativo-rh",
   "version": "1.0.0",
-  "main": "script.js",
+  "main": "frontend/scripts/script.js",
   "scripts": {
     "start": "npm --prefix backend start",
     "dev": "npm --prefix backend run dev",

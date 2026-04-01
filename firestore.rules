@@ -57,13 +57,31 @@ service cloud.firestore {
         && request.resource.data.arquivos.size() <= 10;
     }
 
+    function isAtualizacaoAtendimentoEnvioValida() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['atendimento_status', 'atendimento_atualizado_em'])
+        && request.resource.data.atendimento_status is string
+        && (request.resource.data.atendimento_status == 'feito' || request.resource.data.atendimento_status == 'pendente')
+        && request.resource.data.atendimento_atualizado_em is string;
+    }
+
+    function isSoftDeleteEnvioValido() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['excluido', 'excluido_em'])
+        && request.resource.data.excluido == true
+        && request.resource.data.excluido_em is string;
+    }
+
+    function isRestauracaoEnvioValida() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['excluido', 'excluido_em'])
+        && request.resource.data.excluido == false;
+    }
+
     // Necessário para o login RH verificar se o e-mail já existe/aprovado
     // antes de estabelecer sessão Firebase no cliente.
     match /usuarios_rh/{userDoc} {
       allow read: if true;
       allow create: if request.auth != null || isCadastroUsuarioValido();
       allow update: if request.auth != null || isAtualizacaoModeracaoUsuarioValida();
-      allow delete: if request.auth != null;
+      allow delete: if true;
     }
 
     // Necessário para o painel RH listar os registros sem depender
@@ -71,7 +89,11 @@ service cloud.firestore {
     match /envios_atestados/{envioDoc} {
       allow read: if true;
       allow create: if isEnvioValido();
-      allow write: if request.auth != null;
+      allow update: if request.auth != null
+        || isAtualizacaoAtendimentoEnvioValida()
+        || isSoftDeleteEnvioValido()
+        || isRestauracaoEnvioValida();
+      allow delete: if true;
     }
 
     // Demais dados permanecem restritos a usuário autenticado.

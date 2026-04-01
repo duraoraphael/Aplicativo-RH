@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin RH - Gerenciar Usuários</title>
+  <link rel="stylesheet" href="../styles/styles.css" />
+</head>
+<body>
+  <header class="top-header">
+    <div class="container header-content">
+      <img src="../assets/logo-normatel.png" alt="Normatel Engenharia" class="logo-normatel" />
+    </div>
+  </header>
+
+  <main class="container main-content admin-main">
+    <section class="page-head admin-page-head">
+      <h1>Gerenciamento de Usuários</h1>
+      <p class="page-subtitle">Aprove ou rejeite solicitações de acesso ao painel RH.</p>
+    </section>
+
+    <section class="card admin-overview-card">
+      <div class="admin-top-actions">
+        <div class="rh-list-btn-group">
+          <button type="button" class="rh-admin-btn" onclick="sincronizarUsuarioPorEmail()">Adicionar usuário manualmente</button>
+          <button type="button" class="rh-admin-btn" onclick="voltarParaPainel()">Voltar ao Painel RH</button>
+        </div>
+      </div>
+
+      <section id="sincronizarUsuarioPanel" class="admin-sync-panel hidden" aria-label="Adicionar usuário manualmente" aria-hidden="true">
+        <label for="syncUsuarioEmail">E-mail da colaboradora</label>
+        <input id="syncUsuarioEmail" type="email" placeholder="nome.sobrenome@empresa.com" autocomplete="email" />
+
+        <label for="syncUsuarioNome">Nome da colaboradora (opcional)</label>
+        <input id="syncUsuarioNome" type="text" placeholder="Ex.: Maria Silva" autocomplete="name" />
+
+        <div class="admin-sync-actions">
+          <button type="button" class="btn-aprovar" onclick="confirmarSincronizacaoUsuario()">Continuar</button>
+          <button type="button" class="btn-rejeitar" onclick="cancelarSincronizacaoUsuario()">Cancelar</button>
+        </div>
+      </section>
+
+      <div class="admin-stats-grid">
+        <article class="admin-stat-card">
+          <span class="admin-stat-label">Pendentes de aprovação</span>
+          <strong class="admin-stat-number" id="totalPendentes">0</strong>
+        </article>
+      </div>
+
+      <p id="carregando" class="status-message status-message--info status-toast hidden">Carregando usuários pendentes...</p>
+      <p id="mensagem" class="status-message status-toast hidden"></p>
+    </section>
+
+    <section class="card admin-list-card">
+      <div class="admin-list-header">
+        <h2>Usuários pendentes</h2>
+      </div>
+
+      <div id="listaPendentes" class="admin-usuarios-lista">
+        <div class="status-vazio">Nenhum usuário pendente de aprovação</div>
+      </div>
+    </section>
+
+    <section class="card admin-list-card">
+      <div class="admin-list-header">
+        <h2>Colaboradores cadastrados</h2>
+        <div class="usuarios-cadastrados-header-actions">
+          <button type="button" id="togglePainelColaboradoresBtn" class="rh-admin-btn">Mostrar colaboradores</button>
+        </div>
+      </div>
+
+      <div id="painelColaboradoresConteudo" class="hidden" aria-hidden="true">
+        <p class="rh-project-search-info">Use a busca e o filtro para localizar rapidamente colaboradoras e colaboradores por status.</p>
+
+        <div class="usuarios-cadastrados-header-actions">
+          <button type="button" id="toggleUsuariosCadastradosBtn" class="rh-admin-btn hidden">Mostrar todos</button>
+          <button type="button" id="atualizarUsuariosCadastradosBtn" class="rh-admin-btn">Atualizar lista</button>
+        </div>
+
+        <div class="usuarios-cadastrados-filtros" aria-label="Filtros de colaboradores cadastrados">
+          <label for="buscaUsuariosCadastrados">Buscar por nome ou e-mail</label>
+          <input id="buscaUsuariosCadastrados" type="text" placeholder="Digite nome ou e-mail" autocomplete="off" />
+
+          <label for="filtroStatusUsuariosCadastrados">Filtrar por status</label>
+          <select id="filtroStatusUsuariosCadastrados">
+            <option value="">Todos</option>
+            <option value="aprovado">Aprovado</option>
+            <option value="pendente">Pendente</option>
+            <option value="rejeitado">Rejeitado</option>
+          </select>
+        </div>
+
+        <div class="usuarios-cadastrados-resumo" aria-label="Resumo de colaboradores cadastrados">
+          <article class="usuarios-resumo-card">
+            <span>Total</span>
+            <strong id="resumoUsuariosTotal">0</strong>
+          </article>
+          <article class="usuarios-resumo-card usuarios-resumo-card--aprovado">
+            <span>Aprovados</span>
+            <strong id="resumoUsuariosAprovados">0</strong>
+          </article>
+          <article class="usuarios-resumo-card usuarios-resumo-card--pendente">
+            <span>Pendentes</span>
+            <strong id="resumoUsuariosPendentes">0</strong>
+          </article>
+          <article class="usuarios-resumo-card usuarios-resumo-card--rejeitado">
+            <span>Rejeitados</span>
+            <strong id="resumoUsuariosRejeitados">0</strong>
+          </article>
+        </div>
+
+        <p id="usuariosCadastradosStatus" class="status-message status-message--info status-toast">Carregando colaboradores cadastrados...</p>
+        <div id="listaUsuariosCadastrados" class="admin-usuarios-lista"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+  <!-- Configuração do Firebase -->
+  <script src="../scripts/firebase-config.js"></script>
+  <script src="../scripts/rh-admin.js?v=20260310n"></script>
+</body>
+</html>
+

@@ -4,9 +4,40 @@ let tabelaWrapper = null;
 let tabelaBody = null;
 let sairRhBtn = null;
 let gerenciarUsuariosBtn = null;
+let usuarioLogadoInfo = null;
 let projetoCards = [];
 let listaStatusTimer = null;
-const BACKEND_URL = (localStorage.getItem('rh_backend_url') || '').trim().replace(/\/+$/, '');
+const DEFAULT_REMOTE_BACKEND_URL = '';
+
+function resolverBackendUrl() {
+  const valorConfigurado = String(localStorage.getItem('rh_backend_url') || '').trim();
+
+  if (valorConfigurado) {
+    try {
+      const url = new URL(valorConfigurado);
+      const hostLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+      if (!hostLocal && url.protocol === 'http:') {
+        url.protocol = 'https:';
+      }
+      return url.toString().replace(/\/+$/, '');
+    } catch {
+      return valorConfigurado.replace(/\/+$/, '');
+    }
+  }
+
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'http://localhost:3001';
+  }
+
+  if (window.__RH_BACKEND_URL__) {
+    return String(window.__RH_BACKEND_URL__).trim().replace(/\/+$/, '');
+  }
+
+  return DEFAULT_REMOTE_BACKEND_URL;
+}
+
+const BACKEND_URL = resolverBackendUrl();
 
 let registrosCache = [];
 let projetoSelecionado = '';
@@ -18,6 +49,7 @@ function inicializarElementosDom() {
   tabelaBody = document.getElementById('atestadosBody');
   sairRhBtn = document.getElementById('sairRhBtn');
   gerenciarUsuariosBtn = document.getElementById('gerenciarUsuariosBtn');
+  usuarioLogadoInfo = document.getElementById('usuarioLogadoInfo');
   projetoCards = Array.from(document.querySelectorAll('.projeto-card'));
   
   console.log('✅ Elementos DOM inicializados:', {
@@ -26,19 +58,76 @@ function inicializarElementosDom() {
     tabelaBody: !!tabelaBody,
     sairRhBtn: !!sairRhBtn,
     gerenciarUsuariosBtn: !!gerenciarUsuariosBtn,
+    usuarioLogadoInfo: !!usuarioLogadoInfo,
     projetoCards: projetoCards.length
   });
 }
 
+function atualizarUsuarioLogado() {
+  if (!usuarioLogadoInfo) return;
+
+  const nome = String(localStorage.getItem('rh_user_nome') || '').trim();
+  const email = String(localStorage.getItem('rh_user_email') || '').trim();
+  const texto = nome || email;
+
+  if (!texto) {
+    usuarioLogadoInfo.textContent = '';
+    usuarioLogadoInfo.classList.add('hidden');
+    return;
+  }
+
+  usuarioLogadoInfo.textContent = `Usuário: ${texto}`;
+  usuarioLogadoInfo.classList.remove('hidden');
+}
+
+function iniciarSincronizacaoUsuarioLogado() {
+  if (typeof window?.firebase?.auth !== 'function') {
+    return;
+  }
+
+  try {
+    window.firebase.auth().onAuthStateChanged((usuario) => {
+      if (!usuario) {
+        return;
+      }
+
+      const nome = String(usuario.displayName || '').trim();
+      const email = String(usuario.email || '').trim().toLowerCase();
+
+      if (nome) {
+        localStorage.setItem('rh_user_nome', nome);
+      }
+      if (email) {
+        localStorage.setItem('rh_user_email', email);
+      }
+
+      atualizarUsuarioLogado();
+    });
+  } catch {
+    // Mantem fluxo mesmo sem observador de auth.
+  }
+}
+
 function setListaStatus(texto, tipo = 'info') {
   if (!listaStatus) return;
+
+  const mensagem = String(texto || '').trim();
 
   if (listaStatusTimer) {
     clearTimeout(listaStatusTimer);
     listaStatusTimer = null;
   }
 
-  listaStatus.textContent = texto;
+  if (!mensagem) {
+    listaStatus.textContent = '';
+    listaStatus.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
+    listaStatus.classList.add('hidden');
+    return;
+  }
+
+  listaStatus.classList.remove('hidden');
+
+  listaStatus.textContent = mensagem;
   listaStatus.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
   if (tipo === 'error') {
     listaStatus.classList.add('status-message--error');
@@ -53,6 +142,7 @@ function setListaStatus(texto, tipo = 'info') {
       if (!listaStatus) return;
       listaStatus.textContent = '';
       listaStatus.classList.remove('status-message--info', 'status-message--success', 'status-message--error');
+      listaStatus.classList.add('hidden');
       listaStatusTimer = null;
     }, 4000);
   }
@@ -237,7 +327,7 @@ function erroPermissaoFirestore(error) {
   return texto.includes('permission-denied') || texto.includes('missing or insufficient permissions');
 }
 
-function resolverBackendUrl() {
+function obterBackendConfigurado() {
   return BACKEND_URL;
 }
 
@@ -317,7 +407,7 @@ async function carregarEnviosComFallback() {
       throw error;
     }
 
-    const backendBase = resolverBackendUrl();
+    const backendBase = obterBackendConfigurado();
     if (!backendBase) {
       throw new Error('Sem permissão no Firestore para ler envios_atestados. Publique regras no Firebase Console liberando leitura desta coleção para o painel RH.');
     }
@@ -489,11 +579,13 @@ function adicionarEventListeners() {
 function inicializarDashboard() {
   console.log('✅ Inicializando dashboard RH');
   inicializarElementosDom();
+  atualizarUsuarioLogado();
+  iniciarSincronizacaoUsuarioLogado();
   ativarDownloadComNome();
   if (tabelaWrapper) {
     tabelaWrapper.classList.add('hidden');
   }
-  setListaStatus('Selecione um projeto para abrir os registros.', 'info');
+  setListaStatus('');
   
   // Mostrar botão de admin
   if (gerenciarUsuariosBtn) {

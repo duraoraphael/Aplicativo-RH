@@ -3,7 +3,38 @@ const usuariosPendentes = document.getElementById('usuariosPendentes');
 const totalPendentes = document.getElementById('totalPendentes');
 const voltarPainelBtn = document.getElementById('voltarPainelBtn');
 const sairRhBtn = document.getElementById('sairRhBtn');
-const BACKEND_URL = (localStorage.getItem('rh_backend_url') || '').trim().replace(/\/+$/, '');
+const DEFAULT_REMOTE_BACKEND_URL = '';
+
+function resolverBackendUrl() {
+  const valorConfigurado = String(localStorage.getItem('rh_backend_url') || '').trim();
+
+  if (valorConfigurado) {
+    try {
+      const url = new URL(valorConfigurado);
+      const hostLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+      if (!hostLocal && url.protocol === 'http:') {
+        url.protocol = 'https:';
+      }
+      return url.toString().replace(/\/+$/, '');
+    } catch {
+      return valorConfigurado.replace(/\/+$/, '');
+    }
+  }
+
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'http://localhost:3001';
+  }
+
+  if (window.__RH_BACKEND_URL__) {
+    return String(window.__RH_BACKEND_URL__).trim().replace(/\/+$/, '');
+  }
+
+  return DEFAULT_REMOTE_BACKEND_URL;
+}
+
+const BACKEND_URL = resolverBackendUrl();
+
 let usuariosStatusTimer = null;
 
 function registrarEventoBackend(acao, detalhes = {}) {
@@ -97,10 +128,12 @@ function criarCardPendente(usuario) {
   return card;
 }
 
-
-
-
-import { db, collection, getDocs, query, where, doc, updateDoc } from './firebase-config.js';
+function obterFirestore() {
+  if (typeof window?.firebase?.firestore !== 'function') {
+    throw new Error('FIREBASE_NOT_LOADED');
+  }
+  return window.firebase.firestore();
+}
 
 async function carregarPendentes() {
   setUsuariosStatus('Carregando usuários pendentes...', 'info');
@@ -110,10 +143,11 @@ async function carregarPendentes() {
   }
   try {
     // Busca usuários com status 'pendente' no Firestore
-    const usuariosRef = collection(db, 'usuarios_rh');
-    const q = query(usuariosRef, where('status', '==', 'pendente'));
-    const snapshot = await getDocs(q);
-    const pendentes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snapshot = await obterFirestore()
+      .collection('usuarios_rh')
+      .where('status', '==', 'pendente')
+      .get();
+    const pendentes = snapshot.docs.map((registro) => ({ id: registro.id, ...(registro.data() || {}) }));
 
     if (totalPendentes) {
       totalPendentes.textContent = String(pendentes.length);
@@ -139,8 +173,7 @@ async function aprovarUsuario(userId, botao) {
   botao.textContent = 'Aprovando...';
   try {
     // Atualiza o status do usuário para 'aprovado' no Firestore
-    const usuarioRef = doc(db, 'usuarios_rh', userId);
-    await updateDoc(usuarioRef, { status: 'aprovado' });
+    await obterFirestore().collection('usuarios_rh').doc(String(userId)).update({ status: 'aprovado' });
     registrarEventoBackend('usuario_aprovado', { usuarioIdAprovado: userId });
     const card = botao.closest('.usuario-item');
     if (card) {

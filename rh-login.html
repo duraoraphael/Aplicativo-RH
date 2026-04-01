@@ -2,55 +2,17 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%235fbe4a'/%3E%3Cpath d='M14 34h36v8H14zM14 22h36v8H14z' fill='white'/%3E%3C/svg%3E" />
-  <title>Login RH</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Redirecionando...</title>
+  <script>
+    (function () {
+      var target = '/frontend/pages/rh-login.html';
+      var next = target + (window.location.search || '') + (window.location.hash || '');
+      window.location.replace(next);
+    })();
+  </script>
+
 </head>
 <body>
-  <header class="top-header">
-    <div class="container header-content">
-      <img src="assets/logo-normatel.png" alt="Normatel Engenharia" class="logo-normatel" />
-    </div>
-  </header>
-
-  <main class="container main-content login-main">
-    <section class="card login-card">
-      <h1>Login RH</h1>
-      <p class="page-subtitle">Entre com sua conta Microsoft para acessar os atestados e declarações.</p>
-      <p class="page-subtitle login-approval-note">Todo novo cadastro fica pendente até aprovação do administrador.</p>
-
-      <button type="button" id="microsoftLoginBtn" class="microsoft-login-btn login-main-btn ms-auth-btn ms-auth-btn-primary">
-        <span class="ms-icon" aria-hidden="true">
-          <span class="ms-sq ms-red"></span>
-          <span class="ms-sq ms-green"></span>
-          <span class="ms-sq ms-blue"></span>
-          <span class="ms-sq ms-yellow"></span>
-        </span>
-        <span>Entrar com Microsoft</span>
-      </button>
-
-      <p class="login-register-text">Ainda não possui acesso RH?</p>
-      <button type="button" id="microsoftRegisterBtn" class="rh-access-btn login-main-btn ms-auth-btn ms-auth-btn-secondary">
-        <span class="ms-icon" aria-hidden="true">
-          <span class="ms-sq ms-red"></span>
-          <span class="ms-sq ms-green"></span>
-          <span class="ms-sq ms-blue"></span>
-          <span class="ms-sq ms-yellow"></span>
-        </span>
-        <span>Cadastrar com Microsoft</span>
-      </button>
-
-      <p id="loginMensagem" class="rh-auth-status status-message status-message--info status-toast" role="status" aria-live="polite"></p>
-
-      <a href="index.html" class="success-link login-back-link">Voltar</a>
-    </section>
-  </main>
-
-  <script src="rh-login.js?v=20260305a"></script>
+  <p>Redirecionando para <a href="/frontend/pages/rh-login.html">/frontend/pages/rh-login.html</a>...</p>
 </body>
 </html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%235fbe4a'/%3E%3Cpath d='M14 34h36v8H14zM14 22h36v8H14z' fill='white'/%3E%3C/svg%3E" />
+  <title>Detalhes do Projeto RH</title>
+  <link rel="stylesheet" href="../styles/styles.css" />
+</head>
+<body>
+  <header class="top-header">
+    <div class="container header-content">
+      <img src="../assets/logo-normatel.png" alt="Normatel Engenharia" class="logo-normatel" />
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <section class="page-head">
+      <h1 id="projetoTitulo">Projeto RH</h1>
+      <p id="projetoDescricao" class="page-subtitle">Visualizando todas as informações preenchidas.</p>
+    </section>
+
+    <section class="card rh-list-card">
+      <div class="rh-list-actions rh-list-actions--project">
+        <div class="rh-list-btn-group rh-list-btn-group--fixed" aria-label="Ações dos detalhes do projeto">
+          <a id="voltarPainelRhProjetoBtn" href="rh-atestados.html" class="success-link rh-action-link-btn">Voltar ao Painel RH</a>
+        </div>
+      </div>
+
+      <div class="detalhes-filtros">
+        <label for="filtroNome">
+          Filtrar por nome
+          <input id="filtroNome" type="text" placeholder="Digite o nome" />
+        </label>
+        <label for="filtroDataInicio">
+          Data enviada (início)
+          <input id="filtroDataInicio" type="date" />
+        </label>
+        <label for="filtroDataFim">
+          Data enviada (fim)
+          <input id="filtroDataFim" type="date" />
+        </label>
+        <label for="filtroTipoAtestado">
+          Filtrar por tipo de atestado
+          <select id="filtroTipoAtestado">
+            <option value="">Todos os tipos</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="detalhes-filtros-acoes">
+        <div class="detalhes-status-toggle" role="group" aria-label="Filtrar por status de atendimento">
+          <button id="filtroPendentesBtn" type="button" class="detalhes-status-btn is-active" aria-pressed="true">Pendentes</button>
+          <button id="filtroFeitosBtn" type="button" class="detalhes-status-btn" aria-pressed="false">Feitos</button>
+          <button id="filtroExcluidosBtn" type="button" class="detalhes-status-btn detalhes-status-btn--lixeira" aria-pressed="false">&#128465; Excluídos</button>
+        </div>
+        <button id="baixarFiltradosBtn" type="button" class="detalhes-download-massa-btn" disabled>Exportação em massa</button>
+      </div>
+
+      <p id="detalhesStatus" class="rh-list-status status-message status-message--info status-toast"></p>
+
+      <div id="detalhesContainer" class="detalhes-grid"></div>
+    </section>
+  </main>
+
+  <div id="modalExclusao" class="admin-dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="modalExclusaoTitulo" hidden>
+    <div class="admin-dialog">
+      <h2 id="modalExclusaoTitulo" class="admin-dialog-title">&#128465;&#65039; Excluir atestado</h2>
+      <p class="admin-dialog-message">Tem certeza que deseja excluir este atestado?<br>O atestado será movido para <strong>Excluídos</strong> e pode ser restaurado depois.</p>
+      <div class="admin-dialog-actions">
+        <button id="modalExclusaoCancelar" type="button" class="btn-cancelar">Cancelar</button>
+        <button id="modalExclusaoConfirmar" type="button" class="btn-rejeitar">Sim, excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+  <script src="../scripts/firebase-config.js"></script>
+  <script src="../scripts/rh-projeto.js?v=20260317f"></script>
+</body>
+</html>
+

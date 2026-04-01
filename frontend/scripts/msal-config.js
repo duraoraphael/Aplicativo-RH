@@ -22,9 +22,16 @@ const currentPageRedirect =
 const normalizedLocalRedirect =
   currentPageRedirect.replace('://127.0.0.1:', '://localhost:');
 
-const runtimeRedirectUri =
-  (typeof localStorage !== 'undefined' && localStorage.getItem('rh_msal_redirect_uri')) ||
-  normalizedLocalRedirect;
+const hostName = typeof window !== 'undefined' ? String(window.location.hostname || '').toLowerCase() : '';
+const isLocalHost = hostName === 'localhost' || hostName === '127.0.0.1';
+const localCanonicalRedirect = typeof window !== 'undefined'
+  ? `${window.location.origin.replace('://127.0.0.1:', '://localhost:')}/account-selector.html`
+  : 'http://localhost:5500/account-selector.html';
+const storedRedirectUri = (typeof localStorage !== 'undefined' && localStorage.getItem('rh_msal_redirect_uri')) || '';
+
+const runtimeRedirectUri = isLocalHost
+  ? localCanonicalRedirect
+  : (storedRedirectUri || normalizedLocalRedirect);
 
 const msalConfig = {
   auth: {

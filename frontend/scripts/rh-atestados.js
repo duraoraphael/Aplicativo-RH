@@ -17,6 +17,9 @@ async function registrarEventoBackend(acao, detalhes = {}) {
   }
 }
 
+const RH_PROJETO_CODIGO_KEY = 'rh_projeto_codigo';
+const RH_PROJETO_ORIGEM_KEY = 'rh_projeto_origem';
+
 function fazerLogout() {
   const emailAtual = localStorage.getItem('rh_user_email') || '';
   localStorage.removeItem('rh_auth_token');
@@ -39,11 +42,10 @@ function irParaDashboardDemandas() {
 }
 
 function abrirProjetoEmNovaAba(codigoProjeto) {
-  const params = new URLSearchParams();
-  params.set('projeto', codigoProjeto);
-  params.set('origem', 'rh-atestados.html');
+  sessionStorage.setItem(RH_PROJETO_CODIGO_KEY, String(codigoProjeto || '').trim());
+  sessionStorage.setItem(RH_PROJETO_ORIGEM_KEY, 'rh-atestados.html');
   registrarEventoBackend('abrir_projeto', { projeto: codigoProjeto });
-  window.location.href = `rh-projeto.html?${params.toString()}`;
+  window.location.href = 'rh-projeto.html';
 }
 
 window.fazerLogout = fazerLogout;

@@ -1,83 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
-  <title>Aprovação de Usuários RH</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" />
+  <title>Redirecionando...</title>
+  <script>
+    (function () {
+      var target = '/frontend/pages/rh-aprovacao.html';
+      var next = target + (window.location.search || '') + (window.location.hash || '');
+      window.location.replace(next);
+    })();
+  </script>
+
 </head>
 <body>
-  <header class="top-header">
-    <div class="container header-content">
-      <img src="assets/logo-normatel.png" alt="Normatel Engenharia" class="logo-normatel" />
-    </div>
-  </header>
-  <main class="container main-content">
-    <section class="card">
-      <h1>Aprovação de Usuários</h1>
-      <div id="mensagemAprovacao" class="status-message status-toast"></div>
-      <div id="usuariosPendentes"></div>
-    </section>
-  </main>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-  <script>
-    // Configuração do Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyCWLQteC_iYmUi_0DVEsUb5kCdki5e13bs",
-      authDomain: "normatel-rh.firebaseapp.com",
-      projectId: "normatel-rh"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // Função para aprovar usuário
-    async function aprovarUsuario(docId, nome) {
-      try {
-        await db.collection('usuarios_rh').doc(docId).update({ status: 'aprovado' });
-        mostrarMensagem(`✅ Usuário ${nome} aprovado!`, 'success');
-        carregarPendentes();
-      } catch (e) {
-        mostrarMensagem('Erro ao aprovar usuário: ' + e.message, 'error');
-      }
-    }
-
-    function mostrarMensagem(msg, tipo = 'info') {
-      const el = document.getElementById('mensagemAprovacao');
-      el.textContent = msg;
-      el.className = 'status-message status-toast';
-      if (tipo === 'success') el.classList.add('status-message--success');
-      if (tipo === 'error') el.classList.add('status-message--error');
-      setTimeout(() => { el.textContent = ''; el.className = 'status-message status-toast'; }, 4000);
-    }
-
-    async function carregarPendentes() {
-      const container = document.getElementById('usuariosPendentes');
-      container.innerHTML = 'Carregando...';
-      const snap = await db.collection('usuarios_rh').where('status', '==', 'pendente').get();
-      if (snap.empty) {
-        container.innerHTML = '<div class="status-vazio">Nenhum usuário pendente de aprovação.</div>';
-        return;
-      }
-      container.innerHTML = '';
-      snap.forEach(doc => {
-        const u = doc.data();
-        const div = document.createElement('div');
-        div.className = 'usuario-item';
-        div.innerHTML = `
-          <div class="usuario-info">
-            <div class="usuario-nome">${u.nome || u.email}</div>
-            <div class="usuario-email">${u.email}</div>
-          </div>
-          <button class="btn-aprovar" onclick="aprovarUsuario('${doc.id}','${u.nome || u.email}')">Aprovar</button>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    window.aprovarUsuario = aprovarUsuario;
-    carregarPendentes();
-  </script>
+  <p>Redirecionando para... <a href="/frontend/pages/rh-aprovacao.html">/frontend/pages/rh-aprovacao.html</a>...</p>
 </body>
 </html>

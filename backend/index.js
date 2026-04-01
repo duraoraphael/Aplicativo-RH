@@ -49,7 +49,7 @@ const FIRESTORE_COLLECTIONS = {
 };
 
 // CONFIGURAÇÃO DE SEGURANÇA
-const ALLOWED_ORIGINS = [
+const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
@@ -57,12 +57,35 @@ const ALLOWED_ORIGINS = [
   'https://aplicativo-rh-pb-normatel.fly.dev',
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.trim().replace(/\/+$/, '')] : []),
 ];
+const ALLOWED_ORIGINS = obterOrigensPermitidas();
+const ALLOWED_ORIGIN_SUFFIXES = obterSufixosPermitidos();
+const FORCE_HTTPS = String(process.env.FORCE_HTTPS || 'true').toLowerCase() !== 'false';
 
 const MAX_PAYLOAD_SIZE = 30 * 1024 * 1024; // 30MB
 const MAX_REQUESTS_PER_MINUTE = 100;
 const MAX_EVENT_REQUESTS_PER_MINUTE = 2000;
 const MAX_CRITICAL_REQUESTS_PER_MINUTE = 300;
 const REQUEST_TRACKER = new Map(); // IP -> { count, timestamp }
+
+function obterOrigensPermitidas() {
+  const origensEnv = String(process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origem) => origem.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
+  return Array.from(new Set([...DEFAULT_ALLOWED_ORIGINS, ...origensEnv]));
+}
+
+function obterSufixosPermitidos() {
+  const sufixosPadrao = ['.vercel.app'];
+  const sufixosEnv = String(process.env.ALLOWED_ORIGIN_SUFFIXES || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+    .map((item) => (item.startsWith('.') ? item : `.${item}`));
+
+  return Array.from(new Set([...sufixosPadrao, ...sufixosEnv]));
+}
 
 let firestoreDb = null;
 let firestoreInitPromise = null;
@@ -200,7 +223,20 @@ async function excluirEnvioFirestore(id) {
     return false;
   }
 
-  await ref.delete();
+  await ref.set({ excluido: true, excluido_em: new Date().toISOString() }, { merge: true });
+  return true;
+}
+
+async function restaurarEnvioFirestore(id) {
+  const db = await obterFirestoreObrigatorio();
+  const ref = db.collection(FIRESTORE_COLLECTIONS.envios).doc(String(id));
+  const doc = await ref.get();
+
+  if (!doc.exists) {
+    return false;
+  }
+
+  await ref.update({ excluido: false, excluido_em: null });
   return true;
 }
 
@@ -598,37 +634,87 @@ function obterIpCliente(req) {
          'unknown';
 }
 
-function extrairHostDaUrl(urlStr) {
-  try {
-    return [new URL(urlStr).host];
-  } catch {
-    return [];
-  }
+function normalizarOrigem(origem) {
+  return String(origem || '').trim().replace(/\/+$/, '');
 }
 
-// Conjunto de hosts permitidos para redirecionamento HTTPS (derivado de ALLOWED_ORIGINS)
-const ALLOWED_HOSTS = new Set(ALLOWED_ORIGINS.flatMap(extrairHostDaUrl));
+function origemEhLocalhost(origem) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origem);
+}
+
+function origemEhPermitidaPorSufixo(origem) {
+  if (!origem) {
+    return false;
+  }
+
+  let host = '';
+  try {
+    host = new URL(origem).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+
+  return ALLOWED_ORIGIN_SUFFIXES.some((sufixo) => host.endsWith(sufixo));
+}
+
+function requisicaoEhHttps(req) {
+  const protoHeader = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim().toLowerCase();
+  return protoHeader === 'https' || req.socket.encrypted === true;
+}
+
+function hostEhLocal(host) {
+  return /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(String(host || '').trim());
+}
+
+function deveRedirecionarParaHttps(req) {
+  if (!FORCE_HTTPS) {
+    return false;
+  }
+
+  if (requisicaoEhHttps(req)) {
+    return false;
+  }
+
+  if (hostEhLocal(req.headers.host)) {
+    return false;
+  }
+
+  return true;
+}
+
+function setSecurityHeaders(req, res) {
+  const requisicaoSegura = requisicaoEhHttps(req);
+
+  if (requisicaoSegura) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '0'); // Auditor XSS do navegador é obsoleto; 0 desabilita sem riscos
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+}
 
 // CORS middleware com whitelist
-function setCORSHeaders(res, origem, proto) {
-  const origemEhLocalhost = typeof origem === 'string' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origem);
-  const origemPermitida = ALLOWED_ORIGINS.includes(origem) || origemEhLocalhost;
+function setCORSHeaders(res, origem) {
+  const origemNormalizada = normalizarOrigem(origem);
+  const origemPermitida = ALLOWED_ORIGINS.includes(origemNormalizada)
+    || origemEhLocalhost(origemNormalizada)
+    || origemEhPermitidaPorSufixo(origemNormalizada);
 
-  if (origemPermitida && origem !== 'unknown') {
-    res.setHeader('Access-Control-Allow-Origin', origem);
+  if (origemPermitida && origemNormalizada && origemNormalizada !== 'unknown') {
+    res.setHeader('Access-Control-Allow-Origin', origemNormalizada);
   }
-  // Origens não permitidas não recebem Access-Control-Allow-Origin — o navegador bloqueará a resposta
+
+  res.setHeader('Vary', 'Origin');
 
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Max-Age', '3600');
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '0'); // Auditor XSS do navegador é obsoleto; 0 desabilita sem riscos
-  if (proto === 'https') {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000');
-  }
+  return origemPermitida || !origemNormalizada || origemNormalizada === 'unknown';
+
 }
 
 // Servidor HTTP
@@ -637,19 +723,23 @@ const server = http.createServer(async (req, res) => {
   const ip = obterIpCliente(req);
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
-  const proto = String(req.headers['x-forwarded-proto'] || '').toLowerCase();
-
-  // Redirecionar HTTP → HTTPS em produção (valida host contra whitelist)
-  if (proto === 'http' && process.env.NODE_ENV === 'production') {
-    const host = String(req.headers.host || '').toLowerCase().replace(/:\d+$/, '');
-    if (ALLOWED_HOSTS.has(host)) {
-      res.writeHead(301, { Location: `https://${host}${req.url}` });
-      res.end();
-      return;
-    }
+  if (deveRedirecionarParaHttps(req)) {
+    const host = req.headers.host;
+    const location = `https://${host}${req.url || '/'}`;
+    res.writeHead(308, { Location: location, 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ redirect: location }));
+    return;
   }
 
-  setCORSHeaders(res, origem, proto);
+  setSecurityHeaders(req, res);
+  const origemPermitida = setCORSHeaders(res, origem);
+
+  if (!origemPermitida) {
+    res.writeHead(403);
+    res.end(JSON.stringify({ error: 'Origem não permitida por CORS' }));
+    return;
+  }
+
 
   // Verificar rate limit
   const ehRotaEvento = pathname === '/api/eventos';
@@ -827,6 +917,36 @@ const server = http.createServer(async (req, res) => {
 
       res.writeHead(200);
       res.end(JSON.stringify({ id, excluido: true }));
+      return;
+    }
+
+    // Restaurar envio excluído
+    if (pathname.match(/^\/api\/envios\/restaurar\//) && req.method === 'POST') {
+      const id = pathname.split('/').pop();
+
+      if (!id || id.length > 100) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'ID inválido' }));
+        return;
+      }
+
+      let restaurado = false;
+      try {
+        restaurado = await restaurarEnvioFirestore(id);
+      } catch (firestoreError) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: `Falha ao restaurar envio (${firestoreError.message})` }));
+        return;
+      }
+
+      if (!restaurado) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Envio não encontrado' }));
+        return;
+      }
+
+      res.writeHead(200);
+      res.end(JSON.stringify({ id, restaurado: true }));
       return;
     }
 
@@ -1140,6 +1260,8 @@ server.listen(PORT, () => {
   console.log(`  - POST /api/usuarios/rejeitar/:id`);
   console.log(`\n⚠️ SEGURANÇA ATIVA:`);
   console.log(`  - CORS: Whitelist ${ALLOWED_ORIGINS.length} origens`);
+  console.log(`  - CORS: Sufixos permitidos ${ALLOWED_ORIGIN_SUFFIXES.join(', ')}`);
+  console.log(`  - HTTPS obrigatório: ${FORCE_HTTPS ? 'sim' : 'não (FORCE_HTTPS=false)'}`);
   console.log(`  - Rate limit: ${MAX_REQUESTS_PER_MINUTE} req/min por IP`);
   console.log(`  - Tamanho máximo: ${MAX_PAYLOAD_SIZE / 1024 / 1024}MB`);
 });
