@@ -606,11 +606,8 @@ function extrairHostDaUrl(urlStr) {
   }
 }
 
-// Conjunto de hosts permitidos para redirecionamento HTTPS (derivado das origens permitidas)
-const ALLOWED_HOSTS = new Set([
-  'aplicativo-rh-pb-normatel.fly.dev',
-  ...(process.env.FRONTEND_URL ? extrairHostDaUrl(process.env.FRONTEND_URL) : []),
-]);
+// Conjunto de hosts permitidos para redirecionamento HTTPS (derivado de ALLOWED_ORIGINS)
+const ALLOWED_HOSTS = new Set(ALLOWED_ORIGINS.flatMap(extrairHostDaUrl));
 
 // CORS middleware com whitelist
 function setCORSHeaders(res, origem, proto) {
@@ -619,17 +616,16 @@ function setCORSHeaders(res, origem, proto) {
 
   if (origemPermitida && origem !== 'unknown') {
     res.setHeader('Access-Control-Allow-Origin', origem);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
   }
-  
+  // Origens não permitidas não recebem Access-Control-Allow-Origin — o navegador bloqueará a resposta
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Max-Age', '3600');
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-XSS-Protection', '0'); // Auditor XSS do navegador é obsoleto; 0 desabilita sem riscos
   if (proto === 'https') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000');
   }
