@@ -13,7 +13,7 @@ const filtroFeitosBtn = document.getElementById('filtroFeitosBtn');
 const filtroExcluidosBtn = document.getElementById('filtroExcluidosBtn');
 const baixarFiltradosBtn = document.getElementById('baixarFiltradosBtn');
 const voltarPainelRhProjetoBtn = document.getElementById('voltarPainelRhProjetoBtn');
-const DEFAULT_REMOTE_BACKEND_URL = '';
+const DEFAULT_REMOTE_BACKEND_URL = 'https://api-vgqcbmomea-uc.a.run.app';
 
 function resolverBackendUrl() {
   const valorConfigurado = String(localStorage.getItem('rh_backend_url') || '').trim();
@@ -29,11 +29,6 @@ function resolverBackendUrl() {
     } catch {
       return valorConfigurado.replace(/\/+$/, '');
     }
-  }
-
-  const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1') {
-    return 'http://localhost:3001';
   }
 
   if (window.__RH_BACKEND_URL__) {
@@ -71,6 +66,8 @@ const RH_PROJETO_CODIGO_KEY = 'rh_projeto_codigo';
 const RH_PROJETO_ORIGEM_KEY = 'rh_projeto_origem';
 let cancelMonitorAcessoRh = null;
 let filtroAtendimentoAtual = 'pendente';
+let cacheBackendsZipDisponiveis = [];
+let cacheBackendsZipAtualizadoEm = 0;
 
 async function requisicaoBackendJson(url, options = {}, tentativas = 2) {
   let ultimaResposta = null;
@@ -171,7 +168,7 @@ function iniciarMonitoramentoAcessoRh() {
         if (!aprovado) {
           forcarLogoutPorRevogacaoAcesso();
         }
-      });
+      }, () => { /* erro de transporte — SDK reconecta automaticamente */ });
   } catch {
     // Sem monitoramento em caso de falha de permissão/rede.
   }
@@ -1056,7 +1053,71 @@ function ehUrlFirebaseStorage(urlArquivo) {
   }
 }
 
-async function baixarBlobParaZip(urlArquivo, nomeArquivo) {
+function urlRequerProxyParaZip(urlArquivo) {
+  try {
+    const parsed = new URL(urlArquivo);
+    const host = String(parsed.hostname || '').toLowerCase();
+    return (
+      host.includes('firebasestorage.googleapis.com') ||
+      host.includes('storage.googleapis.com') ||
+      host.includes('googleusercontent.com')
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function backendZipEstaDisponivel(backendBase) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2500);
+
+  try {
+    const resposta = await fetch(`${backendBase}/api/health`, {
+      method: 'GET',
+      credentials: 'omit',
+      signal: controller.signal
+    });
+    return resposta.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function obterBackendsZipDisponiveis() {
+  const agora = Date.now();
+  if (cacheBackendsZipAtualizadoEm && (agora - cacheBackendsZipAtualizadoEm) < 30000) {
+    return cacheBackendsZipDisponiveis;
+  }
+
+  const candidatos = listarBackendsCandidatos();
+  const disponiveis = [];
+
+  for (const backendBase of candidatos) {
+    // Evita tentar localhost:3001 quando o backend local nao esta no ar.
+    const ok = await backendZipEstaDisponivel(backendBase);
+    if (ok) {
+      disponiveis.push(backendBase);
+    }
+  }
+
+  cacheBackendsZipDisponiveis = disponiveis;
+  cacheBackendsZipAtualizadoEm = agora;
+  return disponiveis;
+}
+
+async function baixarBlobParaZip(urlArquivo, nomeArquivo, backendsDisponiveis = null) {
+  let ultimoErroProxy = '';
+
+  const backends = Array.isArray(backendsDisponiveis)
+    ? backendsDisponiveis
+    : await obterBackendsZipDisponiveis();
+
+  if (urlRequerProxyParaZip(urlArquivo) && !backends.length) {
+    throw new Error('BACKEND_PROXY_NOT_AVAILABLE');
+  }
+
   try {
     const respostaDireta = await fetch(urlArquivo, { credentials: 'omit' });
     if (respostaDireta.ok) {
@@ -1066,7 +1127,6 @@ async function baixarBlobParaZip(urlArquivo, nomeArquivo) {
     // tenta proxy via backend
   }
 
-  const backends = listarBackendsCandidatos();
   if (!backends.length) {
     throw new Error('BACKEND_PROXY_NOT_AVAILABLE');
   }
@@ -1078,22 +1138,35 @@ async function baixarBlobParaZip(urlArquivo, nomeArquivo) {
       if (respostaProxy.ok) {
         return await respostaProxy.blob();
       }
+      ultimoErroProxy = `HTTP_${respostaProxy.status}`;
     } catch {
       // tenta próximo backend
+      ultimoErroProxy = 'NETWORK_ERROR';
     }
   }
 
-  throw new Error('BACKEND_PROXY_UNREACHABLE');
+  throw new Error(ultimoErroProxy ? `BACKEND_PROXY_UNREACHABLE:${ultimoErroProxy}` : 'BACKEND_PROXY_UNREACHABLE');
 }
 
 async function baixarArquivosIndividualmente(arquivos) {
+  let sucesso = 0;
+  let falhas = 0;
+
   for (let i = 0; i < arquivos.length; i += 1) {
     const arquivo = arquivos[i];
-    await baixarArquivoComNome(arquivo.url, arquivo.nome);
+    try {
+      await baixarArquivoComNome(arquivo.url, arquivo.nome);
+      sucesso += 1;
+    } catch {
+      falhas += 1;
+    }
+
     if (i < arquivos.length - 1) {
       await new Promise((resolve) => setTimeout(resolve, 180));
     }
   }
+
+  return { sucesso, falhas };
 }
 
 function ativarDownloadComNome() {
@@ -1171,11 +1244,13 @@ async function baixarPdfsFiltrados() {
   setDetalhesStatus('Gerando arquivo ZIP da exportação em massa...', 'info');
 
   try {
+    const backendsZipDisponiveis = await obterBackendsZipDisponiveis();
+
     const zip = new window.JSZip();
     const nomesUsados = new Set();
 
     for (const arquivo of arquivos) {
-      const blob = await baixarBlobParaZip(arquivo.url, arquivo.nome);
+      const blob = await baixarBlobParaZip(arquivo.url, arquivo.nome, backendsZipDisponiveis);
       let nome = arquivo.nome;
       if (nomesUsados.has(nome)) {
         const base = nome.replace(/\.pdf$/i, '');
@@ -1202,11 +1277,22 @@ async function baixarPdfsFiltrados() {
 
     setDetalhesStatus(`ZIP gerado com sucesso: ${arquivos.length} arquivo(s).`, 'success');
   } catch (error) {
-    console.error('Falha ao gerar ZIP de exportação em massa:', error);
-    if (error?.message === 'BACKEND_PROXY_NOT_AVAILABLE') {
-      setDetalhesStatus('Não foi possível gerar o ZIP: configure a URL do backend em nuvem em localStorage["rh_backend_url"].', 'error');
-    } else if (error?.message === 'BACKEND_PROXY_UNREACHABLE') {
-      setDetalhesStatus('Não foi possível gerar o ZIP: backend em nuvem indisponível ou URL inválida.', 'error');
+    const erroZipEsperado = String(error?.message || '').startsWith('BACKEND_PROXY_NOT_AVAILABLE') || String(error?.message || '').startsWith('BACKEND_PROXY_UNREACHABLE');
+    if (!erroZipEsperado) {
+      console.warn('Falha ao gerar ZIP de exportação em massa:', error);
+    }
+
+    if (erroZipEsperado) {
+      setDetalhesStatus('Backend indisponível para ZIP. Iniciando download individual dos arquivos...', 'info');
+      const resultado = await baixarArquivosIndividualmente(arquivos);
+
+      if (resultado.sucesso > 0 && resultado.falhas === 0) {
+        setDetalhesStatus(`ZIP indisponível no momento. Download individual concluído: ${resultado.sucesso} arquivo(s).`, 'success');
+      } else if (resultado.sucesso > 0 && resultado.falhas > 0) {
+        setDetalhesStatus(`ZIP indisponível no momento. Download individual parcial: ${resultado.sucesso} arquivo(s) baixado(s), ${resultado.falhas} falha(s).`, 'error');
+      } else {
+        setDetalhesStatus('Não foi possível gerar o ZIP e os downloads individuais também falharam.', 'error');
+      }
     } else {
       setDetalhesStatus(`Não foi possível gerar o ZIP (${error?.message || 'falha desconhecida'}).`, 'error');
     }

@@ -1,4 +1,6 @@
 const path = require("path");
+const https = require("https");
+const http = require("http");
 const {setGlobalOptions} = require("firebase-functions/v2");
 const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
@@ -650,11 +652,109 @@ async function responderApi(req, res) {
       return;
     }
 
+    if (pathname === "/api/arquivos/proxy" && req.method === "GET") {
+      const urlArquivo = String(req.query.url || "").trim();
+      const nomeArquivo = sanitizarNomeArquivoProxy(req.query.nome || "arquivo.pdf");
+
+      if (!urlArquivo) {
+        res.status(400).json({error: "Parâmetro url é obrigatório"});
+        return;
+      }
+
+      if (!urlProxyPermitida(urlArquivo)) {
+        res.status(403).json({error: "URL não permitida para proxy"});
+        return;
+      }
+
+      try {
+        const remoto = await baixarArquivoRemotoProxy(urlArquivo);
+        res.setHeader("Content-Type", remoto.contentType || "application/octet-stream");
+        res.setHeader("Content-Disposition", `attachment; filename="${nomeArquivo}"`);
+        res.setHeader("Cache-Control", "no-store");
+        res.status(200).send(remoto.buffer);
+        return;
+      } catch (erroFetch) {
+        logger.error("Erro no proxy de arquivo", erroFetch);
+        res.status(502).json({error: `Falha ao baixar arquivo remoto (${erroFetch.message})`});
+        return;
+      }
+    }
+
     res.status(404).json({error: "Rota não encontrada"});
   } catch (error) {
     logger.error("Erro na API", error);
     res.status(500).json({error: "Erro interno do servidor", detalhe: error.message});
   }
+}
+
+function urlProxyPermitida(urlArquivo) {
+  try {
+    const parsed = new URL(String(urlArquivo || ""));
+    if (!["http:", "https:"].includes(parsed.protocol)) return false;
+    const host = String(parsed.hostname || "").toLowerCase();
+    return host === "firebasestorage.googleapis.com" || host === "storage.googleapis.com";
+  } catch {
+    return false;
+  }
+}
+
+function sanitizarNomeArquivoProxy(nome) {
+  return String(nome || "arquivo.pdf")
+      .replace(/[\\/:*?"<>|]/g, "")
+      .replace(/\s+/g, " ")
+      .trim() || "arquivo.pdf";
+}
+
+function baixarArquivoRemotoProxy(urlArquivo, redirecionamentosRestantes = 3) {
+  return new Promise((resolve, reject) => {
+    let parsed;
+    try {
+      parsed = new URL(String(urlArquivo || ""));
+    } catch {
+      reject(new Error("URL inválida para proxy"));
+      return;
+    }
+
+    const isHttps = parsed.protocol === "https:";
+    const cliente = isHttps ? https : http;
+    const reqRemoto = cliente.request(parsed, {
+      method: "GET",
+      headers: {"User-Agent": "rh-functions-proxy/1.0"},
+    }, (resp) => {
+      const status = Number(resp.statusCode || 0);
+      const location = resp.headers.location;
+
+      if (status >= 300 && status < 400 && location && redirecionamentosRestantes > 0) {
+        const proximaUrl = new URL(location, parsed).toString();
+        resp.resume();
+        baixarArquivoRemotoProxy(proximaUrl, redirecionamentosRestantes - 1)
+            .then(resolve).catch(reject);
+        return;
+      }
+
+      if (status < 200 || status >= 300) {
+        resp.resume();
+        reject(new Error(`HTTP ${status}`));
+        return;
+      }
+
+      const chunks = [];
+      resp.on("data", (chunk) => chunks.push(chunk));
+      resp.on("end", () => {
+        resolve({
+          buffer: Buffer.concat(chunks),
+          contentType: resp.headers["content-type"] || "application/octet-stream",
+        });
+      });
+      resp.on("error", (err) => reject(err));
+    });
+
+    reqRemoto.on("error", (err) => reject(err));
+    reqRemoto.setTimeout(30000, () => {
+      reqRemoto.destroy(new Error("Timeout de 30s no proxy"));
+    });
+    reqRemoto.end();
+  });
 }
 
 exports.api = onRequest({memory: "1GiB", timeoutSeconds: 120}, responderApi);

@@ -54,6 +54,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:5500',
   'http://127.0.0.1:5500',
   // 'http://localhost:8080' // removido: não usar emulador
+  'https://aplicativo-rh-pb-normatel.fly.dev',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.trim().replace(/\/+$/, '')] : []),
 ];
 const ALLOWED_ORIGINS = obterOrigensPermitidas();
 const ALLOWED_ORIGIN_SUFFIXES = obterSufixosPermitidos();
@@ -689,7 +691,7 @@ function setSecurityHeaders(req, res) {
 
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-XSS-Protection', '0'); // Auditor XSS do navegador é obsoleto; 0 desabilita sem riscos
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
 }
@@ -706,12 +708,13 @@ function setCORSHeaders(res, origem) {
   }
 
   res.setHeader('Vary', 'Origin');
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Max-Age', '3600');
   res.setHeader('Content-Type', 'application/json');
-
   return origemPermitida || !origemNormalizada || origemNormalizada === 'unknown';
+
 }
 
 // Servidor HTTP
@@ -720,7 +723,6 @@ const server = http.createServer(async (req, res) => {
   const ip = obterIpCliente(req);
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
-
   if (deveRedirecionarParaHttps(req)) {
     const host = req.headers.host;
     const location = `https://${host}${req.url || '/'}`;
@@ -737,6 +739,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ error: 'Origem não permitida por CORS' }));
     return;
   }
+
 
   // Verificar rate limit
   const ehRotaEvento = pathname === '/api/eventos';

@@ -22,6 +22,7 @@ if (!window.firebase.apps.length) {
 }
 
 window.db = window.firebase.firestore();
+window.db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
 window.auth = window.firebase.auth();
 if (typeof window.firebase.storage === 'function') {
   window.storage = window.firebase.storage();

@@ -34,9 +34,14 @@ function resolverBackendUrl() {
 }
 
 const BACKEND_URL = resolverBackendUrl();
+
 let usuariosStatusTimer = null;
 
 function registrarEventoBackend(acao, detalhes = {}) {
+  if (!BACKEND_URL) {
+    return;
+  }
+
   const payload = {
     acao,
     pagina: 'rh-usuarios.html',

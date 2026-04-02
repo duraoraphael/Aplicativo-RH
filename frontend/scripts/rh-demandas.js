@@ -237,7 +237,7 @@ function iniciarMonitoramentoAcessoRh() {
         if (!aprovado) {
           forcarLogoutPorRevogacaoAcesso();
         }
-      });
+      }, () => { /* erro de transporte — SDK reconecta automaticamente */ });
   } catch {
     // Sem monitoramento em caso de falha de permissao/rede.
   }
