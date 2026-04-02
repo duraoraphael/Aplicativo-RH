@@ -13,7 +13,7 @@ const filtroFeitosBtn = document.getElementById('filtroFeitosBtn');
 const filtroExcluidosBtn = document.getElementById('filtroExcluidosBtn');
 const baixarFiltradosBtn = document.getElementById('baixarFiltradosBtn');
 const voltarPainelRhProjetoBtn = document.getElementById('voltarPainelRhProjetoBtn');
-const DEFAULT_REMOTE_BACKEND_URL = 'https://aplicativo-rh-pb-normatel.fly.dev';
+const DEFAULT_REMOTE_BACKEND_URL = '';
 
 function resolverBackendUrl() {
   const valorConfigurado = String(localStorage.getItem('rh_backend_url') || '').trim();
@@ -168,7 +168,7 @@ function iniciarMonitoramentoAcessoRh() {
         if (!aprovado) {
           forcarLogoutPorRevogacaoAcesso();
         }
-      });
+      }, () => { /* erro de transporte — SDK reconecta automaticamente */ });
   } catch {
     // Sem monitoramento em caso de falha de permissão/rede.
   }
